@@ -4,6 +4,11 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Fixed
+
+- Projects created with `pik new` and an owner get README clone and `cd` commands with their own name.
+- The SBOM job and the MCP Registry publisher download retry after a GitHub download error.
+
 ## [0.2.0] - 2026-11-08
 
 ### Added

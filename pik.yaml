@@ -15,6 +15,9 @@ prompts:
     pattern: ^[A-Za-z0-9-]{1,39}$
     optional: true
 replace:
+  - from: "opikdev/mcp-server-ts-starter\ncd mcp-server-ts-starter\n"
+    to: "{{owner}}/{{name}}\ncd {{name}}\n"
+    files: [README.md]
   - from: opikdev/mcp-server-ts-starter
     to: "{{owner}}/{{name}}"
     files: [README.md, server.json, package.json]
