@@ -13,9 +13,11 @@ Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`.
 1. Bump `version` in `package.json`, and both `version` fields in `server.json`.
 2. Add the release to `CHANGELOG.md`.
 3. Run `pnpm verify` and `pnpm test:e2e`.
-4. Commit, then tag and push:
+4. Merge the change through a pull request, because `main` only accepts pull requests.
+5. Tag the merge commit on `main` and push the tag:
 
    ```sh
+   git switch main && git pull
    git tag -a v0.2.0 -m v0.2.0
    git push origin v0.2.0
    ```
