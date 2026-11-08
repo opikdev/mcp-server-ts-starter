@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ConfigError, loadHttpConfig } from '../../src/config.ts';
+import { ConfigError, loadHttpConfig, loadUpstreamConfig } from '../../src/config.ts';
 
 const token = 'a-token-of-sixteen+';
 
@@ -50,5 +50,37 @@ describe('loadHttpConfig', () => {
 
   it.each(['127.0.0.1', 'localhost', '::1', '[::1]', '127.0.0.5'])('allows none on %s', (host) => {
     expect(loadHttpConfig({ MCP_AUTH_MODE: 'none', HOST: host }).auth).toEqual({ mode: 'none' });
+  });
+});
+
+describe('loadUpstreamConfig', () => {
+  it('is off by default', () => {
+    expect(loadUpstreamConfig({})).toBeNull();
+  });
+
+  it('reads the API, token, and timeout', () => {
+    expect(
+      loadUpstreamConfig({
+        UPSTREAM_API_URL: 'http://api:3000',
+        UPSTREAM_API_TOKEN: 'secret',
+        UPSTREAM_TIMEOUT_MS: '2500',
+      }),
+    ).toEqual({ baseUrl: 'http://api:3000', token: 'secret', timeoutMs: 2500 });
+  });
+
+  it('requires a token when the API is set', () => {
+    expect(() => loadUpstreamConfig({ UPSTREAM_API_URL: 'http://api:3000' })).toThrow(
+      'UPSTREAM_API_TOKEN is required',
+    );
+  });
+
+  it.each(['50', '120000', 'soon'])('rejects a timeout of %s', (value) => {
+    expect(() =>
+      loadUpstreamConfig({
+        UPSTREAM_API_URL: 'http://api:3000',
+        UPSTREAM_API_TOKEN: 's',
+        UPSTREAM_TIMEOUT_MS: value,
+      }),
+    ).toThrow('UPSTREAM_TIMEOUT_MS');
   });
 });

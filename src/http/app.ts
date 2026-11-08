@@ -8,17 +8,20 @@ import {
 import type { HttpConfig } from '../config.ts';
 import type { Logger } from '../logger.ts';
 import { createServer } from '../server.ts';
+import type { NotesClient } from '../upstream/notes-client.ts';
 
 interface HttpAppOptions {
   config: HttpConfig;
   logger: Logger;
   verifier: OAuthTokenVerifier | null;
   now?: () => Date;
+  notes?: NotesClient | null;
 }
 
-export function createHttpApp({ config, logger, verifier, now }: HttpAppOptions) {
+export function createHttpApp({ config, logger, verifier, now, notes = null }: HttpAppOptions) {
   const handler = createMcpHandler(
-    (ctx) => createServer({ transport: 'http', authInfo: ctx.authInfo, ...(now ? { now } : {}) }),
+    (ctx) =>
+      createServer({ transport: 'http', authInfo: ctx.authInfo, notes, ...(now ? { now } : {}) }),
     { onerror: (err) => logger.warn({ err }, 'MCP request failed') },
   );
   const app = createMcpHonoApp({ host: config.host, allowedHosts: config.allowedHosts });

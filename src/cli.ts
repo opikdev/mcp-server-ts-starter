@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
-import { ConfigError, loadLogLevel } from './config.ts';
+import { ConfigError, loadLogLevel, loadUpstreamConfig } from './config.ts';
 import { serveHttp } from './http/serve.ts';
 import { createLogger } from './logger.ts';
 import { createServer } from './server.ts';
+import { createNotesClient } from './upstream/notes-client.ts';
 import { serverName, serverVersion } from './version.ts';
 
 const usage = `Usage: ${serverName} [--http]
@@ -22,8 +23,13 @@ try {
     await serveHttp();
   } else {
     const logger = createLogger(loadLogLevel());
-    serveStdio(() => createServer({ transport: 'stdio' }));
-    logger.info({ version: serverVersion }, 'MCP server ready on stdio');
+    const upstream = loadUpstreamConfig();
+    const notes = upstream ? createNotesClient(upstream) : null;
+    serveStdio(() => createServer({ transport: 'stdio', notes }));
+    logger.info(
+      { version: serverVersion, upstream: upstream?.baseUrl ?? null },
+      'MCP server ready on stdio',
+    );
   }
 } catch (error) {
   if (!(error instanceof ConfigError)) throw error;

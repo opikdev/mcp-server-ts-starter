@@ -1,8 +1,9 @@
 import { serve } from '@hono/node-server';
 import { createJwtVerifier, discoverJwksUrl, remoteKeys } from '../auth/jwt.ts';
 import { createTokenVerifier } from '../auth/token.ts';
-import { type HttpConfig, loadHttpConfig } from '../config.ts';
+import { type HttpConfig, loadHttpConfig, loadUpstreamConfig } from '../config.ts';
 import { createLogger } from '../logger.ts';
+import { createNotesClient } from '../upstream/notes-client.ts';
 import { createHttpApp } from './app.ts';
 
 async function verifierFor(config: HttpConfig) {
@@ -22,7 +23,14 @@ async function verifierFor(config: HttpConfig) {
 export async function serveHttp() {
   const config = loadHttpConfig();
   const logger = createLogger(config.logLevel);
-  const { app, close } = createHttpApp({ config, logger, verifier: await verifierFor(config) });
+  const upstream = loadUpstreamConfig();
+  const notes = upstream ? createNotesClient(upstream) : null;
+  const { app, close } = createHttpApp({
+    config,
+    logger,
+    verifier: await verifierFor(config),
+    notes,
+  });
 
   const server = serve(
     { fetch: app.fetch, port: config.port, hostname: config.host },

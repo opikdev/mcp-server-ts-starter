@@ -22,7 +22,16 @@ const envSchema = z.object({
   MCP_AUTH_ISSUER: z.url().optional(),
   MCP_AUTH_JWKS_URL: z.url().optional(),
   MCP_AUTH_SCOPES: z.string().default('mcp'),
+  UPSTREAM_API_URL: z.url().optional(),
+  UPSTREAM_API_TOKEN: z.string().optional(),
+  UPSTREAM_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(5000),
 });
+
+export interface UpstreamConfig {
+  baseUrl: string;
+  token: string;
+  timeoutMs: number;
+}
 
 export type AuthConfig =
   | { mode: 'oauth'; issuer: string; jwksUrl: string | undefined; scopes: string[] }
@@ -60,6 +69,19 @@ function parse(env: NodeJS.ProcessEnv) {
 
 export function loadLogLevel(env: NodeJS.ProcessEnv = process.env): string {
   return parse(env).LOG_LEVEL;
+}
+
+export function loadUpstreamConfig(env: NodeJS.ProcessEnv = process.env): UpstreamConfig | null {
+  const data = parse(env);
+  if (!data.UPSTREAM_API_URL) return null;
+  if (!data.UPSTREAM_API_TOKEN) {
+    throw new ConfigError('UPSTREAM_API_URL is set, so UPSTREAM_API_TOKEN is required too.');
+  }
+  return {
+    baseUrl: data.UPSTREAM_API_URL,
+    token: data.UPSTREAM_API_TOKEN,
+    timeoutMs: data.UPSTREAM_TIMEOUT_MS,
+  };
 }
 
 export function loadHttpConfig(env: NodeJS.ProcessEnv = process.env): HttpConfig {
