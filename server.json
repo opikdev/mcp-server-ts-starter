@@ -3,13 +3,15 @@
   "name": "io.github.opikdev/mcp-server-ts-starter",
   "title": "MCP server TS starter",
   "description": "Production-ready MCP server in TypeScript, with stdio and Streamable HTTP, OAuth, and tool tests",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "mcp-server-ts-starter",
-      "version": "0.1.0",
-      "transport": { "type": "stdio" }
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

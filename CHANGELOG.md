@@ -4,6 +4,14 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-08
+
+### Added
+
+- `list_notes` and `create_note`, which call a REST API with timeouts, response validation, and readable errors. They appear when `UPSTREAM_API_URL` is set.
+- `docs/upstream.md`, on adapting the pattern to other APIs, GraphQL, and databases.
+- An end-to-end test against a real api-hono-starter.
+
 ## [0.1.0] - 2026-11-08
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "mcp-server-ts-starter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Production-ready MCP server in TypeScript, with stdio and Streamable HTTP, OAuth, and tool tests",
   "license": "MIT",
   "type": "module",
