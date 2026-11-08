@@ -11,6 +11,7 @@ A production-ready Model Context Protocol server in TypeScript, ready to customi
 - **Two transports:** stdio for Claude Code, Claude Desktop, and Cursor, plus stateless Streamable HTTP that scales horizontally.
 - **Secure HTTP:** OAuth per the MCP authorization spec, or static tokens. It won't start without an auth mode, and it blocks DNS rebinding.
 - **Sample tools:** `get_time`, `search_docs`, and `whoami`, with input and output schemas, annotations, and readable errors, plus `docs://` resources.
+- **Backend integration:** `list_notes` and `create_note` call a REST API with timeouts, validated responses, and errors the model can act on. See [Connect a backend API](docs/upstream.md).
 - **Real tests:** every tool is tested through a real MCP client over HTTP and stdio, on both protocol eras.
 - **Publishing:** releases to npm, the MCP Registry, and GHCR, with a test that keeps `server.json` and `package.json` in step.
 - **Agent-ready:** `AGENTS.md`, skills, and checks that run on every commit.
@@ -56,6 +57,7 @@ To add a tool, create a file in `src/tools/` like `src/tools/time.ts`, register 
 |---|---|
 | `src/tools/` | One file per tool |
 | `src/resources/` | Resources and their data |
+| `src/upstream/` | Clients for backend APIs the tools call |
 | `src/http/` | The HTTP app, auth gate, and server startup |
 | `src/auth/` | OAuth and static token verifiers |
 | `test/` | Unit, integration, and end-to-end tests |

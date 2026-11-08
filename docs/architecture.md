@@ -8,6 +8,7 @@ flowchart LR
   H --> F
   F --> T["src/tools/*"]
   F --> D["src/resources/*"]
+  T --> U["src/upstream/*"] --> B[(Backend API)]
 ```
 
 | Path | Does |
@@ -18,6 +19,7 @@ flowchart LR
 | `src/resources/` | Resources and their data |
 | `src/http/` | The Hono app: health, protected resource metadata, auth, and the MCP handler |
 | `src/auth/` | Token and JWT verifiers |
+| `src/upstream/` | Clients for backend APIs, with timeouts and response validation |
 
 ## Key behaviors
 

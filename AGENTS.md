@@ -7,6 +7,7 @@ A production-ready MCP server in TypeScript, built on the official MCP SDK v2. I
 | [docs/architecture.md](docs/architecture.md) | How requests flow, and where tools live |
 | [docs/auth.md](docs/auth.md) | HTTP auth modes and settings |
 | [docs/clients.md](docs/clients.md) | How to connect Claude Code, Claude Desktop, Cursor, and VS Code |
+| [docs/upstream.md](docs/upstream.md) | How tools call a backend API |
 | [docs/publishing.md](docs/publishing.md) | Releasing to npm, the MCP Registry, and GHCR |
 | [docs/decisions/](docs/decisions/) | Why it's built this way |
 | `.agents/skills/` | Step-by-step guides for recurring tasks |
@@ -28,6 +29,7 @@ A production-ready MCP server in TypeScript, built on the official MCP SDK v2. I
 - After cloning, run `git config core.hooksPath .githooks` once to turn on the hook.
 - Add each tool in its own file in `src/tools/`, register it in `src/server.ts`, and test it through a real client in `test/integration/tools.test.ts`.
 - Give every tool an input schema, an output schema, `structuredContent`, and annotations. Report expected failures with `isError: true` and a message the model can act on.
+- Call backends through a client in `src/upstream/` with a timeout and response schema. Turn failures into `UpstreamError` messages, and never return credentials or raw upstream bodies to the model.
 - Never write to stdout outside the SDK, because stdio uses it for protocol messages. Log with the logger, which writes to stderr.
 - Keep `server.json` in step with `package.json`. A test enforces this.
 - Don't edit files listed in `.baseline.sha256`. They come from [opikdev/starters](https://github.com/opikdev/starters).
