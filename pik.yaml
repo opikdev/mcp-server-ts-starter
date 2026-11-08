@@ -1,0 +1,42 @@
+schema: 1
+requires:
+  - name: docker
+  - name: node
+    version: 26.0.0
+  - name: pnpm
+    version: 12.0.0
+prompts:
+  - name: name
+    message: Package name, in kebab-case
+    pattern: ^[a-z][a-z0-9-]{0,49}$
+    default: "{{dir}}"
+  - name: owner
+    message: GitHub owner, for README links, code owners, and the MCP Registry name
+    pattern: ^[A-Za-z0-9-]{1,39}$
+    optional: true
+replace:
+  - from: opikdev/mcp-server-ts-starter
+    to: "{{owner}}/{{name}}"
+    files: [README.md, server.json, package.json]
+  - from: "@opikdev"
+    to: "@{{owner}}"
+    files: [.github/CODEOWNERS]
+  - from: mcp-server-ts-starter
+    to: "{{name}}"
+    files:
+      - package.json
+      - server.json
+      - compose.yaml
+      - test/e2e/package.test.ts
+      - test/e2e/docker.test.ts
+      - docs/clients.md
+exclude:
+  - .baseline.sha256
+  - .github/workflows/baseline-check.yml
+setup:
+  - pnpm install
+next:
+  - pnpm inspect
+check:
+  - pnpm verify
+  - pnpm test:e2e
