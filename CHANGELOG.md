@@ -1,0 +1,16 @@
+# Changelog
+
+All notable changes to this repo are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+## [0.1.0] - 2026-11-08
+
+### Added
+
+- MCP server on the official SDK v2, serving both the 2026-07-28 protocol and older clients.
+- stdio for local clients, and Streamable HTTP with OAuth, static tokens, and DNS rebinding protection.
+- Sample tools with schemas and annotations, plus `docs://` resources.
+- Tests through real MCP clients over HTTP and stdio, plus end-to-end tests of the npm package and Docker image.
+- Release workflow for GHCR, npm, and the MCP Registry, with `server.json`.
+- `pik.yaml`, so `pik new mcp-server-ts-starter` can create projects from this starter.
