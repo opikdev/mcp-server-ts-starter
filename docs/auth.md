@@ -39,6 +39,8 @@ Generate a token with `openssl rand -hex 32`. Each one must be at least 16 chara
 
 ## Settings
 
+An empty value, such as `MCP_AUTH_ISSUER=`, counts as unset.
+
 | Variable | Type | Default | Description |
 |---|---|---|---|
 | `HOST` | string | `127.0.0.1` | Interface to bind. The Docker image uses `0.0.0.0` |

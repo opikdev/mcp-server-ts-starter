@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { ConfigError, loadHttpConfig, loadUpstreamConfig } from '../../src/config.ts';
 
@@ -42,10 +44,32 @@ describe('loadHttpConfig', () => {
     ['a short token', { MCP_AUTH_MODE: 'token', MCP_AUTH_TOKENS: 'short' }, 'at least 16'],
     ['none on a public interface', { MCP_AUTH_MODE: 'none', HOST: '0.0.0.0' }, 'loopback'],
     ['an unknown mode', { MCP_AUTH_MODE: 'magic' }, 'MCP_AUTH_MODE'],
+    ['an empty mode', { MCP_AUTH_MODE: '' }, 'Set MCP_AUTH_MODE'],
     ['a bad port', { MCP_AUTH_MODE: 'none', PORT: '99999' }, 'PORT'],
   ])('rejects %s', (_label, env, message) => {
     expect(() => loadHttpConfig(env)).toThrow(ConfigError);
     expect(() => loadHttpConfig(env)).toThrow(message);
+  });
+
+  it('loads .env.example as shipped', () => {
+    const env = parseEnv(readFileSync('.env.example', 'utf8'));
+    expect(loadHttpConfig(env).auth).toEqual({
+      mode: 'token',
+      tokens: ['dev-token-change-me-0123'],
+      scopes: ['mcp'],
+    });
+    expect(loadUpstreamConfig(env)).toBeNull();
+  });
+
+  it('treats empty values as unset', () => {
+    const config = loadHttpConfig({
+      MCP_AUTH_MODE: 'none',
+      PORT: '',
+      MCP_PUBLIC_URL: '',
+      MCP_AUTH_SCOPES: '',
+    });
+    expect(config.port).toBe(3000);
+    expect(config.publicUrl.href).toBe('http://localhost:3000/mcp');
   });
 
   it.each(['127.0.0.1', 'localhost', '::1', '[::1]', '127.0.0.5'])('allows none on %s', (host) => {

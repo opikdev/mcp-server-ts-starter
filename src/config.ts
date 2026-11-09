@@ -59,7 +59,8 @@ function isLoopback(host: string): boolean {
 }
 
 function parse(env: NodeJS.ProcessEnv) {
-  const result = envSchema.safeParse(env);
+  const set = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ''));
+  const result = envSchema.safeParse(set);
   if (!result.success) {
     const fields = result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`);
     throw new ConfigError(`Invalid environment: ${fields.join('; ')}`);
