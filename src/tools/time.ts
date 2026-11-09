@@ -22,7 +22,12 @@ export function registerTimeTool(server: McpServer, logger: Logger, now: () => D
         timezone: z.string().default('UTC').describe('IANA time zone name. Defaults to UTC.'),
       }),
       outputSchema: z.object({ iso: z.string(), timezone: z.string(), local: z.string() }),
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
     },
     catchToolErrors(logger, async ({ timezone }) => {
       if (!isTimeZone(timezone)) {

@@ -21,7 +21,12 @@ export function registerWhoamiTool(
         clientId: z.string().nullable(),
         scopes: z.array(z.string()),
       }),
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
     },
     catchToolErrors(logger, async () => {
       const result = {

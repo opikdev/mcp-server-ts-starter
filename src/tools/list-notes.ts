@@ -16,7 +16,12 @@ export function registerListNotesTool(server: McpServer, logger: Logger, notes: 
         cursor: z.string().max(100).optional().describe('nextCursor from a previous result.'),
       }),
       outputSchema: z.object({ notes: z.array(noteSchema), nextCursor: z.string().nullable() }),
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     catchToolErrors(logger, async ({ limit, cursor }) => {
       const page = await notes.list({ limit, cursor });

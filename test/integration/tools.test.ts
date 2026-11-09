@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 import { createHttpApp } from '../../src/http/app.ts';
-import { config, connect, devToken, fixedNow, silentLogger, track } from '../helpers.ts';
+import { config, connect, devToken, fakeNotes, fixedNow, silentLogger, track } from '../helpers.ts';
 
 function app() {
   const cfg = config();
@@ -11,6 +11,7 @@ function app() {
       logger: silentLogger(),
       verifier: createTokenVerifier([devToken], ['mcp']),
       now: fixedNow,
+      notes: fakeNotes().client,
     }),
   );
   return { http, url: cfg.publicUrl };
@@ -26,14 +27,31 @@ describe.each(['auto', 'legacy'] as const)('tools, for a %s client', (era) => {
     expect((await client()).getProtocolEra()).toBe(era === 'auto' ? 'modern' : 'legacy');
   });
 
-  it('lists tools in a stable order with schemas and annotations', async () => {
+  it('gives every tool a title, a one-line description, schemas, and every annotation hint', async () => {
     const { tools } = await (await client()).listTools();
-    expect(tools.map((tool) => tool.name)).toEqual(['get_time', 'search_docs', 'whoami']);
     for (const tool of tools) {
-      expect(tool.description).toBeTruthy();
-      expect(tool.outputSchema).toBeDefined();
-      expect(tool.annotations?.readOnlyHint).toBe(true);
+      expect(tool.title, tool.name).toBeTruthy();
+      expect(tool.description, tool.name).toMatch(/^[^\n]+$/);
+      expect(tool.inputSchema, tool.name).toMatchObject({ type: 'object' });
+      expect(tool.outputSchema, tool.name).toMatchObject({ type: 'object' });
+      for (const hint of ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint']) {
+        expect(
+          typeof tool.annotations?.[hint as keyof typeof tool.annotations],
+          `${tool.name} ${hint}`,
+        ).toBe('boolean');
+      }
     }
+  });
+
+  it('lists the sample tools in a stable order, with only create_note writing', async () => {
+    const { tools } = await (await client()).listTools();
+    expect(tools.map((tool) => [tool.name, tool.annotations?.readOnlyHint])).toEqual([
+      ['get_time', true],
+      ['search_docs', true],
+      ['whoami', true],
+      ['list_notes', true],
+      ['create_note', false],
+    ]);
   });
 
   it('returns the time in a time zone', async () => {

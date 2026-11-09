@@ -31,7 +31,12 @@ export function registerSearchDocsTool(server: McpServer, logger: Logger) {
           z.object({ slug: z.string(), title: z.string(), uri: z.string(), snippet: z.string() }),
         ),
       }),
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
     },
     catchToolErrors(logger, async ({ query, limit }) => {
       const terms = query.toLowerCase().split(/\s+/);

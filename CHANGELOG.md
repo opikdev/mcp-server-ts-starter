@@ -6,10 +6,12 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Added
 
+- A contract test over every registered tool, with the notes tools on: a title, a one-line description, input and output schemas, and all four annotation hints.
 - Per-tool scopes. `create_note` requires `notes:write`, checked with `requireScope` from `src/auth/scopes.ts`, and OAuth metadata lists it in `scopes_supported`. With OAuth, a token without it gets a tool error. With static tokens, with `none`, and over stdio, the caller has every scope.
 
 ### Changed
 
+- Every sample tool sets all four annotation hints explicitly.
 - `list_notes` and `create_note` each live in their own file, `src/tools/list-notes.ts` and `src/tools/create-note.ts`, like every other tool.
 - **Breaking:** `createServer` takes a `logger`. Every tool handler is wrapped in `catchToolErrors`, which logs an unexpected error with an error ID and shows the model only `The server failed unexpectedly. Report error ID <id> to its operator.` Before, the model saw the raw error message, and nothing was logged.
 
@@ -37,6 +39,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Added
 
+- A contract test over every registered tool, with the notes tools on: a title, a one-line description, input and output schemas, and all four annotation hints.
 - `list_notes` and `create_note`, which call a REST API with timeouts, response validation, and readable errors. They appear when `UPSTREAM_API_URL` is set.
 - `docs/upstream.md`, on adapting the pattern to other APIs, GraphQL, and databases.
 - An end-to-end test against a real api-hono-starter.
@@ -45,6 +48,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Added
 
+- A contract test over every registered tool, with the notes tools on: a title, a one-line description, input and output schemas, and all four annotation hints.
 - MCP server on the official SDK v2, serving both the 2026-07-28 protocol and older clients.
 - stdio for local clients, and Streamable HTTP with OAuth, static tokens, and DNS rebinding protection.
 - Sample tools with schemas and annotations, plus `docs://` resources.
