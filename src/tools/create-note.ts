@@ -1,8 +1,20 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { Logger } from '../logger.ts';
-import { catchToolErrors } from '../tool-errors.ts';
-import { type NotesClient, noteSchema } from '../upstream/notes-client.ts';
+import { catchToolErrors, toolError } from '../tool-errors.ts';
+import {
+  type Note,
+  type NotesClient,
+  noteSchema,
+  UpstreamError,
+} from '../upstream/notes-client.ts';
+
+const unknownOutcome = {
+  timeout:
+    "The notes API didn't answer in time, so the note may or may not exist. Call list_notes to check before retrying.",
+  unreachable:
+    'The connection to the notes API failed, so the note may or may not exist. Call list_notes to check before retrying.',
+};
 
 export function registerCreateNoteTool(server: McpServer, logger: Logger, notes: NotesClient) {
   server.registerTool(
@@ -24,7 +36,15 @@ export function registerCreateNoteTool(server: McpServer, logger: Logger, notes:
       },
     },
     catchToolErrors(logger, async (input) => {
-      const note = await notes.create(input);
+      let note: Note;
+      try {
+        note = await notes.create(input);
+      } catch (error) {
+        if (error instanceof UpstreamError && error.kind !== 'response') {
+          return toolError(unknownOutcome[error.kind]);
+        }
+        throw error;
+      }
       return {
         content: [{ type: 'text', text: `Created "${note.title}" (${note.id}).` }],
         structuredContent: note,

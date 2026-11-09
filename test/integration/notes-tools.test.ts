@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 import { createHttpApp } from '../../src/http/app.ts';
-import type { NotesClient } from '../../src/upstream/notes-client.ts';
+import { createNotesClient, type NotesClient } from '../../src/upstream/notes-client.ts';
 import { upstreamToken } from '../fake-notes-api.ts';
 import { capturingLogger, config, connect, devToken, fakeNotes, track } from '../helpers.ts';
 
@@ -108,5 +108,32 @@ describe('notes tools', () => {
     );
     expect(logs()).toContain(`"errorId":"${errorId}"`);
     expect(logs()).toContain('connection to db:5432 failed');
+  });
+
+  it.each([
+    [
+      'times out',
+      ((_input, init) =>
+        new Promise((_resolve, reject) =>
+          init?.signal?.addEventListener('abort', () => reject(init.signal?.reason)),
+        )) as typeof fetch,
+      "The notes API didn't answer in time, so the note may or may not exist. Call list_notes to check before retrying.",
+    ],
+    [
+      'drops the connection',
+      (async () => Promise.reject(new TypeError('fetch failed'))) as typeof fetch,
+      'The connection to the notes API failed, so the note may or may not exist. Call list_notes to check before retrying.',
+    ],
+  ])('says a create may have happened when the API %s', async (_label, fetch, message) => {
+    const notes = createNotesClient({
+      baseUrl: 'http://notes.test',
+      token: 't',
+      timeoutMs: 100,
+      fetch,
+    });
+    const { http, url } = setup(notes);
+    const client = await connect(http, url, { token: devToken });
+    const result = await client.callTool({ name: 'create_note', arguments: { title: 'Maybe' } });
+    expect(result).toMatchObject({ isError: true, content: [{ type: 'text', text: message }] });
   });
 });

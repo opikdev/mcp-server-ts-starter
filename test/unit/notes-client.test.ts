@@ -58,6 +58,7 @@ describe('notes client', () => {
     expect(error).toBeInstanceOf(UpstreamError);
     expect((error as UpstreamError).message).toContain(message);
     expect((error as UpstreamError).status).toBe(status);
+    expect((error as UpstreamError).kind).toBe('response');
     expect((error as UpstreamError).message).not.toContain(upstreamToken);
   });
 
@@ -67,12 +68,18 @@ describe('notes client', () => {
         init?.signal?.addEventListener('abort', () => reject(init.signal?.reason)),
       );
     const { client } = setup({ timeoutMs: 100, fetch: hang });
-    await expect(client.list({ limit: 1 })).rejects.toThrow('didn’t answer within 0.1 seconds');
+    await expect(client.list({ limit: 1 })).rejects.toMatchObject({
+      kind: 'timeout',
+      message: 'The notes API didn’t answer within 0.1 seconds. Try again later.',
+    });
   });
 
   it('reports an unreachable API', async () => {
     const { client } = setup({ fetch: async () => Promise.reject(new TypeError('fetch failed')) });
-    await expect(client.list({ limit: 1 })).rejects.toThrow('Couldn’t reach the notes API');
+    await expect(client.list({ limit: 1 })).rejects.toMatchObject({
+      kind: 'unreachable',
+      message: 'Couldn’t reach the notes API. Try again later.',
+    });
   });
 
   it.each([

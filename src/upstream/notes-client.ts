@@ -17,16 +17,21 @@ const problemSchema = z.object({ type: z.string().optional(), detail: z.string()
 export type Note = z.infer<typeof noteSchema>;
 export type NotePage = z.infer<typeof pageSchema>;
 
+export type UpstreamErrorKind = 'timeout' | 'unreachable' | 'response';
+
 export class UpstreamError extends Error {
+  readonly kind: UpstreamErrorKind;
   readonly status: number | null;
   readonly retryAfterSeconds: number | null;
 
   constructor(
     message: string,
+    kind: UpstreamErrorKind,
     status: number | null = null,
     retryAfterSeconds: number | null = null,
   ) {
     super(message);
+    this.kind = kind;
     this.status = status;
     this.retryAfterSeconds = retryAfterSeconds;
   }
@@ -60,11 +65,13 @@ async function toError(response: Response): Promise<UpstreamError> {
     case 403:
       return new UpstreamError(
         'The notes API rejected this server’s credentials. Ask the operator to check UPSTREAM_API_TOKEN.',
+        'response',
         response.status,
       );
     case 429:
       return new UpstreamError(
         `The notes API is rate limiting requests. Retry in ${retryAfter || 60} seconds.`,
+        'response',
         429,
         retryAfter || 60,
       );
@@ -72,11 +79,13 @@ async function toError(response: Response): Promise<UpstreamError> {
       if (response.status >= 400 && response.status < 500) {
         return new UpstreamError(
           `The notes API refused the request: ${detail ?? `HTTP ${response.status}`}`,
+          'response',
           response.status,
         );
       }
       return new UpstreamError(
         `The notes API failed with HTTP ${response.status}. Try again later.`,
+        'response',
         response.status,
       );
   }
@@ -106,15 +115,19 @@ export function createNotesClient({
       if (error instanceof DOMException && error.name === 'TimeoutError') {
         throw new UpstreamError(
           `The notes API didn’t answer within ${timeoutMs / 1000} seconds. Try again later.`,
+          'timeout',
         );
       }
-      throw new UpstreamError('Couldn’t reach the notes API. Try again later.');
+      throw new UpstreamError('Couldn’t reach the notes API. Try again later.', 'unreachable');
     }
 
     if (!response.ok) throw await toError(response);
     const parsed = schema.safeParse(await response.json().catch(() => undefined));
     if (!parsed.success)
-      throw new UpstreamError('The notes API sent a response this server doesn’t understand.');
+      throw new UpstreamError(
+        'The notes API sent a response this server doesn’t understand.',
+        'response',
+      );
     return parsed.data;
   }
 
