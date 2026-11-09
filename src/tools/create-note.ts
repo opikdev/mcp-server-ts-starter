@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { requireScope } from '../auth/scopes.ts';
 import type { Logger } from '../logger.ts';
 import { catchToolErrors, toolError } from '../tool-errors.ts';
 import {
@@ -15,6 +16,8 @@ const unknownOutcome = {
   unreachable:
     'The connection to the notes API failed, so the note may or may not exist. Call list_notes to check before retrying.',
 };
+
+export const notesWriteScope = 'notes:write';
 
 export function registerCreateNoteTool(server: McpServer, logger: Logger, notes: NotesClient) {
   server.registerTool(
@@ -35,7 +38,9 @@ export function registerCreateNoteTool(server: McpServer, logger: Logger, notes:
         openWorldHint: true,
       },
     },
-    catchToolErrors(logger, async (input) => {
+    catchToolErrors(logger, async (input, ctx) => {
+      const denied = requireScope(ctx.http?.authInfo, notesWriteScope, 'create notes');
+      if (denied) return denied;
       let note: Note;
       try {
         note = await notes.create(input);

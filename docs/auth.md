@@ -28,6 +28,19 @@ The server then:
 
 It finds the signing keys through your issuer's metadata. Set `MCP_AUTH_JWKS_URL` if your issuer doesn't publish it.
 
+## Require scopes per tool
+
+Every token needs the scopes in `MCP_AUTH_SCOPES` to connect at all. On top of that, tools that change data each require their own scope, checked with `requireScope` from `src/auth/scopes.ts`:
+
+| Tool | Scope |
+|---|---|
+| `create_note` | `notes:write` |
+| Every other tool | Only `MCP_AUTH_SCOPES` |
+
+With `oauth`, the server checks the scopes in the JWT, and adds `notes:write` to `scopes_supported` in its metadata when the notes tools are on. A token without the scope gets a tool error, `This token lacks the notes:write scope. Reconnect with that scope to create notes.`, and the API isn't called.
+
+With `token` or `none`, and over stdio, the caller has every scope, so only use those where every caller may do everything.
+
 ## Use static tokens
 
 ```sh

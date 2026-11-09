@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createJwtVerifier, discoverJwksUrl, remoteKeys } from '../../src/auth/jwt.ts';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 import { createHttpApp } from '../../src/http/app.ts';
-import { config, connect, devToken, silentLogger, track } from '../helpers.ts';
+import { config, connect, devToken, fakeNotes, silentLogger, track } from '../helpers.ts';
 
 const initialize = {
   jsonrpc: '2.0',
@@ -111,6 +111,7 @@ describe('OAuth', () => {
   let authServer: Server;
   let privateKey: CryptoKey;
   let http: ReturnType<typeof createHttpApp>;
+  let notesApi: ReturnType<typeof fakeNotes>['api'];
 
   beforeAll(async () => {
     const pair = await generateKeyPair('ES256');
@@ -136,10 +137,13 @@ describe('OAuth', () => {
       MCP_PUBLIC_URL: publicUrl,
     });
     const keys = remoteKeys(await discoverJwksUrl(issuer));
+    const notes = fakeNotes();
+    notesApi = notes.api;
     http = createHttpApp({
       config: cfg,
       logger: silentLogger(),
       verifier: createJwtVerifier({ issuer, audience: publicUrl, keys }),
+      notes: notes.client,
     });
   });
 
@@ -166,7 +170,7 @@ describe('OAuth', () => {
     expect(await response.json()).toEqual({
       resource: publicUrl,
       authorization_servers: [issuer],
-      scopes_supported: ['mcp'],
+      scopes_supported: ['mcp', 'notes:write'],
       bearer_methods_supported: ['header'],
     });
   });
@@ -194,6 +198,39 @@ describe('OAuth', () => {
       Authorization: `Bearer ${await sign({ aud: 'http://other.example/mcp' })}`,
     });
     expect(response.status).toBe(401);
+  });
+
+  it.each(['auto', 'legacy'] as const)(
+    'refuses a write tool to a %s client whose token lacks its scope',
+    async (era) => {
+      const client = await connect(http, new URL(publicUrl), { token: await sign(), era });
+      const posts = () => notesApi.requests.filter((request) => request.method === 'POST').length;
+      const before = posts();
+      const result = await client.callTool({ name: 'create_note', arguments: { title: 'No' } });
+      expect(result).toMatchObject({
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'This token lacks the notes:write scope. Reconnect with that scope to create notes.',
+          },
+        ],
+      });
+      expect(posts()).toBe(before);
+    },
+  );
+
+  it('allows a write tool to a token with its scope', async () => {
+    const token = await sign({ scope: 'mcp notes:write' });
+    const client = await connect(http, new URL(publicUrl), { token });
+    const result = await client.callTool({ name: 'create_note', arguments: { title: 'Yes' } });
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ title: 'Yes' });
+  });
+
+  it('allows read tools with only the base scope', async () => {
+    const client = await connect(http, new URL(publicUrl), { token: await sign() });
+    expect((await client.callTool({ name: 'list_notes', arguments: {} })).isError).toBeFalsy();
   });
 
   it('rejects a token without the mcp scope', async () => {

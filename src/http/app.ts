@@ -8,6 +8,7 @@ import {
 import type { HttpConfig } from '../config.ts';
 import type { Logger } from '../logger.ts';
 import { createServer } from '../server.ts';
+import { notesWriteScope } from '../tools/create-note.ts';
 import type { NotesClient } from '../upstream/notes-client.ts';
 
 interface HttpAppOptions {
@@ -41,7 +42,7 @@ export function createHttpApp({ config, logger, verifier, now, notes = null }: H
       c.json({
         resource: config.publicUrl.href,
         authorization_servers: [auth.issuer],
-        scopes_supported: auth.scopes,
+        scopes_supported: notes ? [...auth.scopes, notesWriteScope] : auth.scopes,
         bearer_methods_supported: ['header'],
       }),
     );

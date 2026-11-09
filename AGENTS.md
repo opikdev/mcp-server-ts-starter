@@ -29,6 +29,7 @@ A production-ready MCP server in TypeScript, built on the official MCP SDK v2. I
 - After cloning, run `git config core.hooksPath .githooks` once to turn on the hook.
 - Add each tool in its own file in `src/tools/`, register it in `src/server.ts`, and test it through a real client in `test/integration/tools.test.ts`.
 - Give every tool an input schema, an output schema, `structuredContent`, and annotations. Report expected failures with `isError: true` and a message the model can act on.
+- Every tool that changes data declares the scope it needs and checks it with `requireScope` from `src/auth/scopes.ts`. List the scope in [docs/auth.md](docs/auth.md).
 - Wrap every tool handler in `catchToolErrors` from `src/tool-errors.ts`, so an unexpected error is logged with an error ID and the model sees only the ID.
 - Call backends through a client in `src/upstream/` with a timeout and response schema. Turn failures into `UpstreamError` messages, and never return credentials or raw upstream bodies to the model.
 - Never write to stdout outside the SDK, because stdio uses it for protocol messages. Log with the logger, which writes to stderr.
