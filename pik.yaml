@@ -33,6 +33,7 @@ replace:
       - test/e2e/package.test.ts
       - test/e2e/docker.test.ts
       - docs/clients.md
+      - .devcontainer/devcontainer.json
 exclude:
   - .baseline.sha256
   - .github/workflows/baseline-check.yml

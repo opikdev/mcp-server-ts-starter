@@ -6,6 +6,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Added
 
+- A dev container with Node 26, pnpm, and jq, so `pnpm verify` and `.agents/check.sh` run inside it.
 - HTTP request IDs and access logs. Every response, including `401` and `403` rejections, carries `X-Request-Id`, and each request is logged with its ID, method, path, status, duration, and authenticated client ID.
 - A contract test over every registered tool, with the notes tools on: a title, a one-line description, input and output schemas, and all four annotation hints.
 - Per-tool scopes. `create_note` requires `notes:write`, checked with `requireScope` from `src/auth/scopes.ts`, and OAuth metadata lists it in `scopes_supported`. With OAuth, a token without it gets a tool error. With static tokens, with `none`, and over stdio, the caller has every scope.
