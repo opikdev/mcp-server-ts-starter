@@ -5,7 +5,7 @@ import { createNotesClient, type NotesClient } from '../../src/upstream/notes-cl
 import { upstreamToken } from '../fake-notes-api.ts';
 import { capturingLogger, config, connect, devToken, fakeNotes, track } from '../helpers.ts';
 
-function setup(override?: NotesClient) {
+function setup(override?: NotesClient | null) {
   const { api, client } = fakeNotes();
   const { logger, logs } = capturingLogger();
   const cfg = config();
@@ -14,32 +14,22 @@ function setup(override?: NotesClient) {
       config: cfg,
       logger,
       verifier: createTokenVerifier([devToken], ['mcp']),
-      notes: override ?? client,
+      notes: override === undefined ? client : override,
     }),
   );
   return { api, http, url: cfg.publicUrl, logs };
 }
 
-describe('notes tools', () => {
-  it('appear only when an upstream is configured', async () => {
-    const { http, url } = setup();
-    const { tools } = await (await connect(http, url, { token: devToken })).listTools();
-    expect(tools.map((tool) => tool.name)).toEqual([
-      'get_time',
-      'search_docs',
-      'whoami',
-      'list_notes',
-      'create_note',
-    ]);
-    expect(tools.find((tool) => tool.name === 'create_note')?.annotations).toMatchObject({
-      readOnlyHint: false,
-      openWorldHint: true,
-    });
+describe.each(['auto', 'legacy'] as const)('notes tools, for a %s client', (era) => {
+  it('are hidden without an upstream', async () => {
+    const { http, url } = setup(null);
+    const { tools } = await (await connect(http, url, { token: devToken, era })).listTools();
+    expect(tools.map((tool) => tool.name)).toEqual(['get_time', 'search_docs', 'whoami']);
   });
 
   it('lists notes, then the next page', async () => {
     const { http, url } = setup();
-    const client = await connect(http, url, { token: devToken });
+    const client = await connect(http, url, { token: devToken, era });
     const first = await client.callTool({ name: 'list_notes', arguments: { limit: 2 } });
     const page = first.structuredContent as { notes: { id: string }[]; nextCursor: string | null };
     expect(page.notes.map((note) => note.id)).toEqual(['note_3', 'note_2']);
@@ -52,7 +42,7 @@ describe('notes tools', () => {
 
   it('creates a note the API then lists', async () => {
     const { http, url } = setup();
-    const client = await connect(http, url, { token: devToken });
+    const client = await connect(http, url, { token: devToken, era });
     const created = await client.callTool({
       name: 'create_note',
       arguments: { title: 'From MCP', body: 'hi' },
@@ -69,7 +59,7 @@ describe('notes tools', () => {
 
   it('rejects bad input before calling the API', async () => {
     const { api, http, url } = setup();
-    const client = await connect(http, url, { token: devToken });
+    const client = await connect(http, url, { token: devToken, era });
     const result = await client.callTool({ name: 'create_note', arguments: { title: '' } });
     expect(result.isError).toBe(true);
     expect(api.requests.filter((request) => request.method === 'POST')).toHaveLength(0);
@@ -77,7 +67,7 @@ describe('notes tools', () => {
 
   it('turns API failures into messages the model can act on, without leaking the token', async () => {
     const { api, http, url, logs } = setup();
-    const client = await connect(http, url, { token: devToken });
+    const client = await connect(http, url, { token: devToken, era });
     api.failNext(429, {}, { 'Retry-After': '30' });
     const result = await client.callTool({ name: 'list_notes', arguments: {} });
     expect(result.isError).toBe(true);
@@ -98,7 +88,7 @@ describe('notes tools', () => {
       },
     };
     const { http, url, logs } = setup(broken);
-    const client = await connect(http, url, { token: devToken });
+    const client = await connect(http, url, { token: devToken, era });
     const result = await client.callTool({ name: 'list_notes', arguments: {} });
     expect(result.isError).toBe(true);
     const text = (result.content as { text: string }[])[0]?.text ?? '';
@@ -132,7 +122,7 @@ describe('notes tools', () => {
       fetch,
     });
     const { http, url } = setup(notes);
-    const client = await connect(http, url, { token: devToken });
+    const client = await connect(http, url, { token: devToken, era });
     const result = await client.callTool({ name: 'create_note', arguments: { title: 'Maybe' } });
     expect(result).toMatchObject({ isError: true, content: [{ type: 'text', text: message }] });
   });

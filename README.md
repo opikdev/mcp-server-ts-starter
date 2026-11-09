@@ -12,7 +12,7 @@ A production-ready Model Context Protocol server in TypeScript, ready to customi
 - **Secure HTTP:** OAuth per the MCP authorization spec, or static tokens. It won't start without an auth mode, and it blocks DNS rebinding.
 - **Sample tools:** `get_time`, `search_docs`, and `whoami`, with input and output schemas, annotations, and readable errors, plus `docs://` resources.
 - **Backend integration:** `list_notes` and `create_note` call a REST API with timeouts, validated responses, and errors the model can act on. See [Connect a backend API](docs/upstream.md).
-- **Real tests:** every tool is tested through a real MCP client over HTTP and stdio, on both protocol eras.
+- **Real tests:** every tool is called through a real MCP client over HTTP and stdio, on both protocol eras.
 - **Publishing:** releases to npm, the MCP Registry, and GHCR, with a test that keeps `server.json` and `package.json` in step.
 - **Agent-ready:** `AGENTS.md`, skills, and checks that run on every commit.
 
@@ -49,7 +49,7 @@ The server is now at `http://localhost:3000/mcp`, with the dev token `dev-token-
 
 To use the server from Claude Code, Claude Desktop, Cursor, or VS Code, see [Connect a client](docs/clients.md). Before you serve over HTTP outside your machine, read [Configure HTTP auth](docs/auth.md). To ship a release, see [Publish a release](docs/publishing.md).
 
-To add a tool, create a file in `src/tools/` like `src/tools/time.ts`, register it in `src/server.ts`, and add tests to `test/integration/tools.test.ts`.
+To add a tool, create a file in `src/tools/` like `src/tools/time.ts`, register it in `src/server.ts`, and add tests in `test/integration/`, like `tools.test.ts`.
 
 ## Project structure
 
