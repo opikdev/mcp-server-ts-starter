@@ -4,6 +4,8 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-09
+
 ### Added
 
 - A dev container with Node 26, pnpm, and jq, so `pnpm verify` and `.agents/check.sh` run inside it.
@@ -17,6 +19,8 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 - Every sample tool sets all four annotation hints explicitly.
 - `list_notes` and `create_note` each live in their own file, `src/tools/list-notes.ts` and `src/tools/create-note.ts`, like every other tool.
 - **Breaking:** `createServer` takes a `logger`, and `serveHttp` returns `{ logger, close }` while `src/cli.ts` handles signals. Every tool handler is wrapped in `catchToolErrors`, which logs an unexpected error with an error ID and shows the model only `The server failed unexpectedly. Report error ID <id> to its operator.` Before, the model saw the raw error message, and nothing was logged.
+- The agent harness is v0.3.0. Its check also fails when the harness workflow or pre-commit hook is missing or no longer runs the check.
+- `renovate.json` belongs to the project and extends the shared baseline preset. Generated projects extend only `config:recommended`.
 
 ### Fixed
 
