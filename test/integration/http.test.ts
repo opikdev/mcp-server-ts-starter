@@ -5,7 +5,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createJwtVerifier, discoverJwksUrl, remoteKeys } from '../../src/auth/jwt.ts';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 import { createHttpApp } from '../../src/http/app.ts';
-import { config, connect, devToken, fakeNotes, silentLogger, track } from '../helpers.ts';
+import {
+  capturingLogger,
+  config,
+  connect,
+  devToken,
+  fakeNotes,
+  silentLogger,
+  track,
+} from '../helpers.ts';
 
 const initialize = {
   jsonrpc: '2.0',
@@ -92,6 +100,58 @@ describe('token auth', () => {
       },
     );
     expect(response.status).toBe(404);
+  });
+});
+
+describe('request IDs and access logs', () => {
+  function setup() {
+    const { logger, logs } = capturingLogger();
+    const http = track(
+      createHttpApp({
+        config: config(),
+        logger,
+        verifier: createTokenVerifier([devToken], ['mcp']),
+      }),
+    );
+    const entries = () =>
+      logs()
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line))
+        .filter((entry) => entry.msg === 'HTTP request');
+    return { http, logs, entries };
+  }
+
+  it.each([
+    ['an accepted request', { Authorization: `Bearer ${devToken}` }, 'localhost:3000', 200],
+    ['a request without a token', {}, 'localhost:3000', 401],
+    ['a DNS rebinding attempt', { Authorization: `Bearer ${devToken}` }, 'evil.example.com', 403],
+  ])('returns X-Request-Id on %s', async (_label, headers, host, status) => {
+    const response = await post(setup().http, headers, host);
+    expect(response.status).toBe(status);
+    expect(response.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('logs each request with its ID and client, but never the token', async () => {
+    const { http, logs, entries } = setup();
+    const accepted = await post(http, { Authorization: `Bearer ${devToken}` });
+    const rejected = await post(http);
+    expect(entries()).toEqual([
+      expect.objectContaining({
+        requestId: accepted.headers.get('x-request-id'),
+        method: 'POST',
+        path: '/mcp',
+        status: 200,
+        durationMs: expect.any(Number),
+        clientId: 'token-1',
+      }),
+      expect.objectContaining({
+        requestId: rejected.headers.get('x-request-id'),
+        status: 401,
+      }),
+    ]);
+    expect(entries()[1]).not.toHaveProperty('clientId');
+    expect(logs()).not.toContain(devToken);
   });
 });
 

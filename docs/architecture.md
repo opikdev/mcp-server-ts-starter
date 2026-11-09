@@ -27,4 +27,5 @@ flowchart LR
 - **Both protocol eras:** clients on the stateless 2026-07-28 protocol and clients on the older `initialize` handshake are both served, over stdio and HTTP.
 - **Stateless HTTP:** every request gets a new server instance, so it scales horizontally with no session store.
 - **Safe defaults:** HTTP binds to localhost, checks the `Host` header against DNS rebinding, and won't start until you pick an auth mode.
+- **Request logs:** every HTTP response, including auth and host-check rejections, carries an `X-Request-Id`, and an `info` log line records its ID, method, path, status, duration, and the client ID once authenticated. Tokens are never logged.
 - **Clean stdout:** logs go to stderr, so they never corrupt stdio messages.

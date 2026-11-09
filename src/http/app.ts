@@ -5,11 +5,15 @@ import {
   type OAuthTokenVerifier,
   requireBearerAuth,
 } from '@modelcontextprotocol/server';
+import { Hono } from 'hono';
+import { type RequestIdVariables, requestId } from 'hono/request-id';
 import type { HttpConfig } from '../config.ts';
 import type { Logger } from '../logger.ts';
 import { createServer } from '../server.ts';
 import { notesWriteScope } from '../tools/create-note.ts';
 import type { NotesClient } from '../upstream/notes-client.ts';
+
+type Env = { Variables: RequestIdVariables & { clientId?: string } };
 
 interface HttpAppOptions {
   config: HttpConfig;
@@ -31,8 +35,27 @@ export function createHttpApp({ config, logger, verifier, now, notes = null }: H
       }),
     { onerror: (err) => logger.warn({ err }, 'MCP request failed') },
   );
-  const app = createMcpHonoApp({ host: config.host, allowedHosts: config.allowedHosts });
+  const app = new Hono<Env>();
   const { auth } = config;
+
+  app.use(requestId(), async (c, next) => {
+    const started = performance.now();
+    await next();
+    // requestId() sets the header before the route runs, and Hono drops it when a route returns its own Response.
+    c.header('X-Request-Id', c.get('requestId'));
+    logger.info(
+      {
+        requestId: c.get('requestId'),
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        durationMs: Math.round(performance.now() - started),
+        clientId: c.get('clientId'),
+      },
+      'HTTP request',
+    );
+  });
+  app.route('/', createMcpHonoApp({ host: config.host, allowedHosts: config.allowedHosts }));
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
@@ -61,6 +84,7 @@ export function createHttpApp({ config, logger, verifier, now, notes = null }: H
     if (!gate) return handler.fetch(c.req.raw);
     const authInfo = await gate(c.req.raw);
     if (authInfo instanceof Response) return authInfo;
+    c.set('clientId', authInfo.clientId);
     return handler.fetch(c.req.raw, { authInfo });
   });
 
