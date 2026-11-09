@@ -143,8 +143,12 @@ describe('token verifier', () => {
     ['mcp'],
   );
 
-  it('accepts each configured token', async () => {
-    expect((await tokens.verifyAccessToken('second-token-0123456789')).clientId).toBe('token-2');
+  it('accepts each configured token, with every scope', async () => {
+    expect(await tokens.verifyAccessToken('second-token-0123456789')).toMatchObject({
+      clientId: 'token-2',
+      scopes: ['mcp'],
+      extra: { allScopes: true },
+    });
   });
 
   it.each(['wrong-token-0123456789', '', 'first-token-012345678'])('rejects %j', async (token) => {

@@ -23,11 +23,12 @@ UPSTREAM_API_URL=http://localhost:3200 UPSTREAM_API_TOKEN=$TOKEN pnpm inspect
 
 ## Follow the pattern
 
-`src/upstream/notes-client.ts` and `src/tools/notes.ts` split the work:
+`src/upstream/notes-client.ts`, `src/tools/list-notes.ts`, and `src/tools/create-note.ts` split the work:
 
 1. **The client** calls the API with a timeout, validates every response with a schema, and turns failures into `UpstreamError` messages written for the model, such as "Retry in 30 seconds".
-2. **The tool** validates input, calls the client, returns `structuredContent`, and turns an `UpstreamError` into `isError: true`. Any other error is a bug, so it propagates.
-3. **The annotations** tell clients what a call does: `openWorldHint: true` for an external system, and `readOnlyHint: false` for writes.
+2. **The tool** validates input, calls the client, and returns `structuredContent`. Its handler is wrapped in `catchToolErrors` from `src/tool-errors.ts`, which turns an `UpstreamError` into `isError: true` with its message. Any other error is a bug, so the wrapper logs it with an error ID and shows the model only that ID.
+3. **Writes that aren't idempotent** never tell the model to try again after a timeout or a dropped connection, because the call may have worked. `create_note` says the note may or may not exist, and to check with `list_notes` before retrying.
+4. **The annotations** tell clients what a call does: `openWorldHint: true` for an external system, and `readOnlyHint: false` for writes.
 
 Keep the API token on the server. The model only sees results and error messages, never credentials or raw upstream bodies.
 

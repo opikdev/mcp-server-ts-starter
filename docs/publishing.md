@@ -1,6 +1,6 @@
 # Publish a release
 
-Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`.
+Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml`. It runs `pnpm verify` and `pnpm test:e2e` first, and publishes nothing unless they pass.
 
 | Target | Runs when | Setup |
 |---|---|---|

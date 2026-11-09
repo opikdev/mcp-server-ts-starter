@@ -16,7 +16,13 @@ export function createTokenVerifier(tokens: string[], scopes: string[]): OAuthTo
       if (index === -1)
         throw new OAuthError(OAuthErrorCode.InvalidToken, 'The token is not valid.');
       const expiresAt = Math.floor(Date.now() / 1000) + rollingExpirySeconds;
-      return { token, clientId: `token-${index + 1}`, scopes, expiresAt };
+      return {
+        token,
+        clientId: `token-${index + 1}`,
+        scopes,
+        expiresAt,
+        extra: { allScopes: true },
+      };
     },
   };
 }

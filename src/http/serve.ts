@@ -1,3 +1,6 @@
+import { once } from 'node:events';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { serve } from '@hono/node-server';
 import { createJwtVerifier, discoverJwksUrl, remoteKeys } from '../auth/jwt.ts';
 import { createTokenVerifier } from '../auth/token.ts';
@@ -5,6 +8,8 @@ import { type HttpConfig, loadHttpConfig, loadUpstreamConfig } from '../config.t
 import { createLogger } from '../logger.ts';
 import { createNotesClient } from '../upstream/notes-client.ts';
 import { createHttpApp } from './app.ts';
+
+const shutdownTimeoutMs = 5000;
 
 async function verifierFor(config: HttpConfig) {
   const { auth } = config;
@@ -20,34 +25,32 @@ async function verifierFor(config: HttpConfig) {
   return null;
 }
 
-export async function serveHttp() {
-  const config = loadHttpConfig();
+export async function serveHttp(
+  env: NodeJS.ProcessEnv = process.env,
+  timeoutMs = shutdownTimeoutMs,
+) {
+  const config = loadHttpConfig(env);
   const logger = createLogger(config.logLevel);
-  const upstream = loadUpstreamConfig();
+  const upstream = loadUpstreamConfig(env);
   const notes = upstream ? createNotesClient(upstream) : null;
-  const { app, close } = createHttpApp({
-    config,
+  const http = createHttpApp({ config, logger, verifier: await verifierFor(config), notes });
+
+  const server = serve({
+    fetch: http.app.fetch,
+    port: config.port,
+    hostname: config.host,
+  }) as Server;
+  await once(server, 'listening');
+  const { port } = server.address() as AddressInfo;
+  logger.info({ port, url: config.publicUrl.href, auth: config.auth.mode }, 'MCP server listening');
+
+  return {
     logger,
-    verifier: await verifierFor(config),
-    notes,
-  });
-
-  const server = serve(
-    { fetch: app.fetch, port: config.port, hostname: config.host },
-    ({ port }) => {
-      logger.info(
-        { port, url: config.publicUrl.href, auth: config.auth.mode },
-        'MCP server listening',
-      );
+    async close() {
+      await http.close();
+      const force = setTimeout(() => server.closeAllConnections(), timeoutMs);
+      await new Promise((resolve) => server.close(resolve));
+      clearTimeout(force);
     },
-  );
-
-  const shutdown = (signal: string) => {
-    logger.info({ signal }, 'Shutting down');
-    server.close(() => {
-      close().finally(() => process.exit(0));
-    });
   };
-  process.once('SIGTERM', () => shutdown('SIGTERM'));
-  process.once('SIGINT', () => shutdown('SIGINT'));
 }

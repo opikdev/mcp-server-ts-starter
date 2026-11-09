@@ -16,6 +16,7 @@ flowchart LR
 | `src/cli.ts` | Starts stdio by default, or HTTP with `--http` |
 | `src/server.ts` | Builds a fresh `McpServer` per connection or request, with every tool and resource |
 | `src/tools/` | One file per tool: schemas, annotations, and the handler |
+| `src/tool-errors.ts` | Wraps tool handlers, so upstream errors become `isError` results and unexpected ones are logged with an error ID |
 | `src/resources/` | Resources and their data |
 | `src/http/` | The Hono app: health, protected resource metadata, auth, and the MCP handler |
 | `src/auth/` | Token and JWT verifiers |
@@ -26,4 +27,6 @@ flowchart LR
 - **Both protocol eras:** clients on the stateless 2026-07-28 protocol and clients on the older `initialize` handshake are both served, over stdio and HTTP.
 - **Stateless HTTP:** every request gets a new server instance, so it scales horizontally with no session store.
 - **Safe defaults:** HTTP binds to localhost, checks the `Host` header against DNS rebinding, and won't start until you pick an auth mode.
+- **Request logs:** every HTTP response, including auth and host-check rejections, carries an `X-Request-Id`, and an `info` log line records its ID, method, path, status, duration, and the client ID once authenticated. Tokens are never logged.
+- **Graceful shutdown:** on `SIGTERM` or `SIGINT`, HTTP mode ends open MCP streams first, then stops the server, and cuts off any connection still open after 5 seconds.
 - **Clean stdout:** logs go to stderr, so they never corrupt stdio messages.

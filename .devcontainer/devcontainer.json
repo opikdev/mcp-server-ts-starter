@@ -1,0 +1,9 @@
+{
+  "name": "mcp-server-ts-starter",
+  "image": "node:26",
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
+  ],
+  "forwardPorts": [3000],
+  "postCreateCommand": "apt-get update && apt-get install --yes --no-install-recommends jq && npm install --global pnpm@12.18.0 && pnpm install && (test -f .env || cp .env.example .env)"
+}

@@ -20,12 +20,19 @@ try {
   } else if (args.includes('--version')) {
     console.error(serverVersion);
   } else if (args.includes('--http')) {
-    await serveHttp();
+    const { logger, close } = await serveHttp();
+    for (const signal of ['SIGTERM', 'SIGINT']) {
+      process.once(signal, async () => {
+        logger.info({ signal }, 'Shutting down');
+        await close();
+        process.exit(0);
+      });
+    }
   } else {
     const logger = createLogger(loadLogLevel());
     const upstream = loadUpstreamConfig();
     const notes = upstream ? createNotesClient(upstream) : null;
-    serveStdio(() => createServer({ transport: 'stdio', notes }));
+    serveStdio(() => createServer({ transport: 'stdio', logger, notes }));
     logger.info(
       { version: serverVersion, upstream: upstream?.baseUrl ?? null },
       'MCP server ready on stdio',

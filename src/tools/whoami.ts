@@ -1,8 +1,11 @@
 import type { AuthInfo, McpServer } from '@modelcontextprotocol/server';
-import * as z from 'zod/v4';
+import { z } from 'zod';
+import type { Logger } from '../logger.ts';
+import { catchToolErrors } from '../tool-errors.ts';
 
 export function registerWhoamiTool(
   server: McpServer,
+  logger: Logger,
   transport: 'stdio' | 'http',
   authInfo: AuthInfo | undefined,
 ) {
@@ -18,9 +21,14 @@ export function registerWhoamiTool(
         clientId: z.string().nullable(),
         scopes: z.array(z.string()),
       }),
-      annotations: { readOnlyHint: true, openWorldHint: false },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
     },
-    async () => {
+    catchToolErrors(logger, async () => {
       const result = {
         transport,
         clientId: authInfo?.clientId ?? null,
@@ -31,6 +39,6 @@ export function registerWhoamiTool(
         content: [{ type: 'text', text: `Connected over ${transport} as ${who}.` }],
         structuredContent: result,
       };
-    },
+    }),
   );
 }

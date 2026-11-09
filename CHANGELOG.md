@@ -4,6 +4,27 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Added
+
+- A dev container with Node 26, pnpm, and jq, so `pnpm verify` and `.agents/check.sh` run inside it.
+- HTTP request IDs and access logs. Every response, including `401` and `403` rejections, carries `X-Request-Id`, and each request is logged with its ID, method, path, status, duration, and authenticated client ID.
+- A contract test over every registered tool, with the notes tools on: a title, a one-line description, input and output schemas, and all four annotation hints.
+- **Breaking:** per-tool scopes. `create_note` requires `notes:write`, checked with `requireScope` from `src/auth/scopes.ts`, and OAuth metadata lists it in `scopes_supported`. With OAuth, a token without it gets a tool error. With static tokens, with `none`, and over stdio, the caller has every scope.
+
+### Changed
+
+- The notes tools are tested on both protocol eras, and every tool is called over stdio too, so the README's testing claim holds. `AGENTS.md` lists the notes tools as samples.
+- Every sample tool sets all four annotation hints explicitly.
+- `list_notes` and `create_note` each live in their own file, `src/tools/list-notes.ts` and `src/tools/create-note.ts`, like every other tool.
+- **Breaking:** `createServer` takes a `logger`, and `serveHttp` returns `{ logger, close }` while `src/cli.ts` handles signals. Every tool handler is wrapped in `catchToolErrors`, which logs an unexpected error with an error ID and shows the model only `The server failed unexpectedly. Report error ID <id> to its operator.` Before, the model saw the raw error message, and nothing was logged.
+
+### Fixed
+
+- The release workflow runs `pnpm verify` and `pnpm test:e2e` before it publishes to GHCR or npm.
+- HTTP shutdown no longer hangs on an open SSE stream. It closes the MCP handler first, then the server, and cuts off connections still open after 5 seconds. `src/http/serve.ts` is now covered by tests.
+- After a timeout or dropped connection, `create_note` says the note may or may not exist and to check with `list_notes` before retrying, instead of telling the model to try again and risking a duplicate.
+- Empty settings, such as `MCP_AUTH_ISSUER=` in `.env.example`, count as unset, so `cp .env.example .env && pnpm dev` starts. An empty `MCP_AUTH_SCOPES` now means the default, `mcp`.
+
 ## [0.2.2] - 2026-11-08
 
 ### Fixed
