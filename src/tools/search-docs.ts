@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import type { Logger } from '../logger.ts';
 import { type Doc, docs, docUri } from '../resources/docs.ts';
+import { catchToolErrors } from '../tool-errors.ts';
 
 const snippetLength = 120;
 
@@ -13,7 +15,7 @@ function score(doc: Doc, terms: string[]): number {
   );
 }
 
-export function registerSearchDocsTool(server: McpServer) {
+export function registerSearchDocsTool(server: McpServer, logger: Logger) {
   server.registerTool(
     'search_docs',
     {
@@ -31,7 +33,7 @@ export function registerSearchDocsTool(server: McpServer) {
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ query, limit }) => {
+    catchToolErrors(logger, async ({ query, limit }) => {
       const terms = query.toLowerCase().split(/\s+/);
       const results = docs
         .map((doc) => ({ doc, score: score(doc, terms) }))
@@ -62,6 +64,6 @@ export function registerSearchDocsTool(server: McpServer) {
         ],
         structuredContent: { results },
       };
-    },
+    }),
   );
 }

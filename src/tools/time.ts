@@ -1,5 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import type { Logger } from '../logger.ts';
+import { catchToolErrors, toolError } from '../tool-errors.ts';
 
 function isTimeZone(timeZone: string): boolean {
   try {
@@ -10,7 +12,7 @@ function isTimeZone(timeZone: string): boolean {
   }
 }
 
-export function registerTimeTool(server: McpServer, now: () => Date) {
+export function registerTimeTool(server: McpServer, logger: Logger, now: () => Date) {
   server.registerTool(
     'get_time',
     {
@@ -22,17 +24,11 @@ export function registerTimeTool(server: McpServer, now: () => Date) {
       outputSchema: z.object({ iso: z.string(), timezone: z.string(), local: z.string() }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ timezone }) => {
+    catchToolErrors(logger, async ({ timezone }) => {
       if (!isTimeZone(timezone)) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text',
-              text: `Unknown time zone "${timezone}". Use an IANA name, such as Europe/Berlin.`,
-            },
-          ],
-        };
+        return toolError(
+          `Unknown time zone "${timezone}". Use an IANA name, such as Europe/Berlin.`,
+        );
       }
       const current = now();
       const local = new Intl.DateTimeFormat('en-US', {
@@ -45,6 +41,6 @@ export function registerTimeTool(server: McpServer, now: () => Date) {
         content: [{ type: 'text', text: `${local} (${timezone})` }],
         structuredContent: result,
       };
-    },
+    }),
   );
 }

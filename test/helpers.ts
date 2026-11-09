@@ -1,8 +1,11 @@
+import { Writable } from 'node:stream';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { afterEach } from 'vitest';
 import { type HttpConfig, loadHttpConfig } from '../src/config.ts';
 import type { createHttpApp } from '../src/http/app.ts';
 import { createLogger } from '../src/logger.ts';
+import { createNotesClient } from '../src/upstream/notes-client.ts';
+import { createFakeNotesApi, upstreamToken } from './fake-notes-api.ts';
 
 export const devToken = 'dev-token-0123456789abcdef';
 export const fixedNow = () => new Date('2026-11-08T09:30:00.000Z');
@@ -25,6 +28,28 @@ export type HttpApp = ReturnType<typeof createHttpApp>;
 
 export function silentLogger() {
   return createLogger('silent');
+}
+
+export function capturingLogger() {
+  let logs = '';
+  const sink = new Writable({
+    write(chunk, _encoding, done) {
+      logs += String(chunk);
+      done();
+    },
+  });
+  return { logger: createLogger('debug', sink as never), logs: () => logs };
+}
+
+export function fakeNotes() {
+  const api = createFakeNotesApi();
+  const client = createNotesClient({
+    baseUrl: 'http://notes.test',
+    token: upstreamToken,
+    timeoutMs: 1000,
+    fetch: async (input, init) => api.app.request(new Request(input, init)),
+  });
+  return { api, client };
 }
 
 interface ConnectOptions {

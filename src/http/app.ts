@@ -21,7 +21,13 @@ interface HttpAppOptions {
 export function createHttpApp({ config, logger, verifier, now, notes = null }: HttpAppOptions) {
   const handler = createMcpHandler(
     (ctx) =>
-      createServer({ transport: 'http', authInfo: ctx.authInfo, notes, ...(now ? { now } : {}) }),
+      createServer({
+        transport: 'http',
+        logger,
+        authInfo: ctx.authInfo,
+        notes,
+        ...(now ? { now } : {}),
+      }),
     { onerror: (err) => logger.warn({ err }, 'MCP request failed') },
   );
   const app = createMcpHonoApp({ host: config.host, allowedHosts: config.allowedHosts });

@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { type NotesClient, UpstreamError } from '../upstream/notes-client.ts';
+import type { Logger } from '../logger.ts';
+import { catchToolErrors } from '../tool-errors.ts';
+import type { NotesClient } from '../upstream/notes-client.ts';
 
 const noteOutput = z.object({
   id: z.string(),
@@ -9,12 +11,7 @@ const noteOutput = z.object({
   createdAt: z.string(),
 });
 
-function failure(error: unknown) {
-  if (!(error instanceof UpstreamError)) throw error;
-  return { isError: true, content: [{ type: 'text' as const, text: error.message }] };
-}
-
-export function registerNotesTools(server: McpServer, notes: NotesClient) {
+export function registerNotesTools(server: McpServer, logger: Logger, notes: NotesClient) {
   server.registerTool(
     'list_notes',
     {
@@ -28,22 +25,16 @@ export function registerNotesTools(server: McpServer, notes: NotesClient) {
       outputSchema: z.object({ notes: z.array(noteOutput), nextCursor: z.string().nullable() }),
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async ({ limit, cursor }) => {
-      try {
-        const page = await notes.list({ limit, cursor });
-        const lines = page.data.map((note) => `- ${note.title} (${note.id})`);
-        const text =
-          page.data.length === 0
-            ? 'No notes.'
-            : `${page.data.length} note(s):\n${lines.join('\n')}`;
-        return {
-          content: [{ type: 'text', text }],
-          structuredContent: { notes: page.data, nextCursor: page.meta.nextCursor },
-        };
-      } catch (error) {
-        return failure(error);
-      }
-    },
+    catchToolErrors(logger, async ({ limit, cursor }) => {
+      const page = await notes.list({ limit, cursor });
+      const lines = page.data.map((note) => `- ${note.title} (${note.id})`);
+      const text =
+        page.data.length === 0 ? 'No notes.' : `${page.data.length} note(s):\n${lines.join('\n')}`;
+      return {
+        content: [{ type: 'text', text }],
+        structuredContent: { notes: page.data, nextCursor: page.meta.nextCursor },
+      };
+    }),
   );
 
   server.registerTool(
@@ -64,16 +55,12 @@ export function registerNotesTools(server: McpServer, notes: NotesClient) {
         openWorldHint: true,
       },
     },
-    async (input) => {
-      try {
-        const note = await notes.create(input);
-        return {
-          content: [{ type: 'text', text: `Created "${note.title}" (${note.id}).` }],
-          structuredContent: note,
-        };
-      } catch (error) {
-        return failure(error);
-      }
-    },
+    catchToolErrors(logger, async (input) => {
+      const note = await notes.create(input);
+      return {
+        content: [{ type: 'text', text: `Created "${note.title}" (${note.id}).` }],
+        structuredContent: note,
+      };
+    }),
   );
 }

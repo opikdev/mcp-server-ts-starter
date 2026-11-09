@@ -1,37 +1,23 @@
-import { Writable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 import { createHttpApp } from '../../src/http/app.ts';
-import { createLogger } from '../../src/logger.ts';
-import { createNotesClient } from '../../src/upstream/notes-client.ts';
-import { createFakeNotesApi, upstreamToken } from '../fake-notes-api.ts';
-import { config, connect, devToken, track } from '../helpers.ts';
+import type { NotesClient } from '../../src/upstream/notes-client.ts';
+import { upstreamToken } from '../fake-notes-api.ts';
+import { capturingLogger, config, connect, devToken, fakeNotes, track } from '../helpers.ts';
 
-function setup() {
-  const api = createFakeNotesApi();
-  const notes = createNotesClient({
-    baseUrl: 'http://notes.test',
-    token: upstreamToken,
-    timeoutMs: 1000,
-    fetch: async (input, init) => api.app.request(new Request(input, init)),
-  });
-  let logs = '';
-  const sink = new Writable({
-    write(chunk, _encoding, done) {
-      logs += String(chunk);
-      done();
-    },
-  });
+function setup(override?: NotesClient) {
+  const { api, client } = fakeNotes();
+  const { logger, logs } = capturingLogger();
   const cfg = config();
   const http = track(
     createHttpApp({
       config: cfg,
-      logger: createLogger('debug', sink as never),
+      logger,
       verifier: createTokenVerifier([devToken], ['mcp']),
-      notes,
+      notes: override ?? client,
     }),
   );
-  return { api, http, url: cfg.publicUrl, logs: () => logs };
+  return { api, http, url: cfg.publicUrl, logs };
 }
 
 describe('notes tools', () => {
@@ -100,5 +86,27 @@ describe('notes tools', () => {
     ]);
     expect(JSON.stringify(result)).not.toContain(upstreamToken);
     expect(logs()).not.toContain(upstreamToken);
+  });
+
+  it('logs an unexpected error with an ID, and shows the model only the ID', async () => {
+    const broken: NotesClient = {
+      list: async () => {
+        throw new Error('connection to db:5432 failed for user notes_app');
+      },
+      create: async () => {
+        throw new Error('unused');
+      },
+    };
+    const { http, url, logs } = setup(broken);
+    const client = await connect(http, url, { token: devToken });
+    const result = await client.callTool({ name: 'list_notes', arguments: {} });
+    expect(result.isError).toBe(true);
+    const text = (result.content as { text: string }[])[0]?.text ?? '';
+    const errorId = /error ID ([0-9a-f-]{36})/.exec(text)?.[1];
+    expect(text).toBe(
+      `The server failed unexpectedly. Report error ID ${errorId} to its operator.`,
+    );
+    expect(logs()).toContain(`"errorId":"${errorId}"`);
+    expect(logs()).toContain('connection to db:5432 failed');
   });
 });

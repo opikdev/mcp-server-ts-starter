@@ -16,6 +16,7 @@ flowchart LR
 | `src/cli.ts` | Starts stdio by default, or HTTP with `--http` |
 | `src/server.ts` | Builds a fresh `McpServer` per connection or request, with every tool and resource |
 | `src/tools/` | One file per tool: schemas, annotations, and the handler |
+| `src/tool-errors.ts` | Wraps tool handlers, so upstream errors become `isError` results and unexpected ones are logged with an error ID |
 | `src/resources/` | Resources and their data |
 | `src/http/` | The Hono app: health, protected resource metadata, auth, and the MCP handler |
 | `src/auth/` | Token and JWT verifiers |

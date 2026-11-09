@@ -25,7 +25,7 @@ try {
     const logger = createLogger(loadLogLevel());
     const upstream = loadUpstreamConfig();
     const notes = upstream ? createNotesClient(upstream) : null;
-    serveStdio(() => createServer({ transport: 'stdio', notes }));
+    serveStdio(() => createServer({ transport: 'stdio', logger, notes }));
     logger.info(
       { version: serverVersion, upstream: upstream?.baseUrl ?? null },
       'MCP server ready on stdio',
