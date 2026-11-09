@@ -1,3 +1,4 @@
+import { createServer } from 'node:net';
 import { Writable } from 'node:stream';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { afterEach } from 'vitest';
@@ -82,4 +83,12 @@ export async function connect(
 export function track(http: HttpApp): HttpApp {
   cleanups.push(() => http.close());
   return http;
+}
+
+export async function freePort(): Promise<number> {
+  const server = createServer().listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  const { port } = server.address() as { port: number };
+  await new Promise((resolve) => server.close(resolve));
+  return port;
 }

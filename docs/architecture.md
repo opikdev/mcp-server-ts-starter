@@ -28,4 +28,5 @@ flowchart LR
 - **Stateless HTTP:** every request gets a new server instance, so it scales horizontally with no session store.
 - **Safe defaults:** HTTP binds to localhost, checks the `Host` header against DNS rebinding, and won't start until you pick an auth mode.
 - **Request logs:** every HTTP response, including auth and host-check rejections, carries an `X-Request-Id`, and an `info` log line records its ID, method, path, status, duration, and the client ID once authenticated. Tokens are never logged.
+- **Graceful shutdown:** on `SIGTERM` or `SIGINT`, HTTP mode ends open MCP streams first, then stops the server, and cuts off any connection still open after 5 seconds.
 - **Clean stdout:** logs go to stderr, so they never corrupt stdio messages.

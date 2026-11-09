@@ -18,6 +18,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Fixed
 
+- HTTP shutdown no longer hangs on an open SSE stream. It closes the MCP handler first, then the server, and cuts off connections still open after 5 seconds. `src/http/serve.ts` is now covered by tests.
 - After a timeout or dropped connection, `create_note` says the note may or may not exist and to check with `list_notes` before retrying, instead of telling the model to try again and risking a duplicate.
 - Empty settings, such as `MCP_AUTH_ISSUER=` in `.env.example`, count as unset, so `cp .env.example .env && pnpm dev` starts. An empty `MCP_AUTH_SCOPES` now means the default, `mcp`.
 
@@ -25,6 +26,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Fixed
 
+- HTTP shutdown no longer hangs on an open SSE stream. It closes the MCP handler first, then the server, and cuts off connections still open after 5 seconds. `src/http/serve.ts` is now covered by tests.
 - After a timeout or dropped connection, `create_note` says the note may or may not exist and to check with `list_notes` before retrying, instead of telling the model to try again and risking a duplicate.
 - Projects created with `pik new` are formatted after renaming, so a longer name can't fail `pnpm verify`.
 
@@ -32,6 +34,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ### Fixed
 
+- HTTP shutdown no longer hangs on an open SSE stream. It closes the MCP handler first, then the server, and cuts off connections still open after 5 seconds. `src/http/serve.ts` is now covered by tests.
 - After a timeout or dropped connection, `create_note` says the note may or may not exist and to check with `list_notes` before retrying, instead of telling the model to try again and risking a duplicate.
 - Projects created with `pik new` and an owner get README clone and `cd` commands with their own name.
 - The SBOM job and the MCP Registry publisher download retry after a GitHub download error.
