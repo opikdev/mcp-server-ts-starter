@@ -23,7 +23,7 @@ UPSTREAM_API_URL=http://localhost:3200 UPSTREAM_API_TOKEN=$TOKEN pnpm inspect
 
 ## Follow the pattern
 
-`src/upstream/notes-client.ts` and `src/tools/notes.ts` split the work:
+`src/upstream/notes-client.ts`, `src/tools/list-notes.ts`, and `src/tools/create-note.ts` split the work:
 
 1. **The client** calls the API with a timeout, validates every response with a schema, and turns failures into `UpstreamError` messages written for the model, such as "Retry in 30 seconds".
 2. **The tool** validates input, calls the client, and returns `structuredContent`. Its handler is wrapped in `catchToolErrors` from `src/tool-errors.ts`, which turns an `UpstreamError` into `isError: true` with its message. Any other error is a bug, so the wrapper logs it with an error ID and shows the model only that ID.

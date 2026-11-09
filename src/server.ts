@@ -1,7 +1,8 @@
 import { type AuthInfo, McpServer } from '@modelcontextprotocol/server';
 import type { Logger } from './logger.ts';
 import { registerDocs } from './resources/docs.ts';
-import { registerNotesTools } from './tools/notes.ts';
+import { registerCreateNoteTool } from './tools/create-note.ts';
+import { registerListNotesTool } from './tools/list-notes.ts';
 import { registerSearchDocsTool } from './tools/search-docs.ts';
 import { registerTimeTool } from './tools/time.ts';
 import { registerWhoamiTool } from './tools/whoami.ts';
@@ -33,7 +34,10 @@ export function createServer({
   registerTimeTool(server, logger, now);
   registerSearchDocsTool(server, logger);
   registerWhoamiTool(server, logger, transport, authInfo);
-  if (notes) registerNotesTools(server, logger, notes);
+  if (notes) {
+    registerListNotesTool(server, logger, notes);
+    registerCreateNoteTool(server, logger, notes);
+  }
   registerDocs(server);
   return server;
 }

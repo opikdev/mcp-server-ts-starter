@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const noteSchema = z.object({
+export const noteSchema = z.object({
   id: z.string(),
   title: z.string(),
   body: z.string(),
