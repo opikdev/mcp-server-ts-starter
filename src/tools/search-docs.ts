@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import * as z from 'zod/v4';
+import { z } from 'zod';
 import { type Doc, docs, docUri } from '../resources/docs.ts';
 
 const snippetLength = 120;

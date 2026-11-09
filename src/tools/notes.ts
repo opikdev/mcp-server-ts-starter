@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import * as z from 'zod/v4';
+import { z } from 'zod';
 import { type NotesClient, UpstreamError } from '../upstream/notes-client.ts';
 
 const noteOutput = z.object({

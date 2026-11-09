@@ -1,5 +1,5 @@
 import type { AuthInfo, McpServer } from '@modelcontextprotocol/server';
-import * as z from 'zod/v4';
+import { z } from 'zod';
 
 export function registerWhoamiTool(
   server: McpServer,
