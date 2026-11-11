@@ -1,6 +1,6 @@
 # Connect a backend API
 
-Most MCP servers wrap an existing system. The `list_notes` and `create_note` tools show the pattern by calling a REST API: [api-hono-starter](https://github.com/opikdev/api-hono-starter)'s notes endpoints, or any API with the same shape.
+Most MCP servers wrap an existing system. The `list_notes` and `create_note` tools show the pattern by calling a REST notes API. Any API that meets [the contract](#the-notes-api-contract) works, your own included.
 
 ## Turn the notes tools on
 
@@ -12,7 +12,9 @@ They appear only when `UPSTREAM_API_URL` is set:
 | `UPSTREAM_API_TOKEN` | string | Required with the URL | Sent as `Authorization: Bearer`. Never returned to the model or logged |
 | `UPSTREAM_TIMEOUT_MS` | number | `5000` | How long to wait for each call |
 
-To try it against a real API:
+To use your own API, set `UPSTREAM_API_URL` to its base URL and `UPSTREAM_API_TOKEN` to a token it accepts.
+
+To try the tools without one, `compose.upstream.yaml` runs an example notes API: the released [api-hono-starter](https://github.com/opikdev/api-hono-starter) image with Postgres and demo data. It's only an example, and you can replace it with any API that meets the contract.
 
 ```sh
 docker compose -f compose.upstream.yaml up --wait api
@@ -20,6 +22,31 @@ TOKEN=$(curl -s -X POST localhost:3200/v1/sessions -H 'Content-Type: application
   -d '{"email":"demo@example.com","password":"demo-password-123"}' | jq -r .token)
 UPSTREAM_API_URL=http://localhost:3200 UPSTREAM_API_TOKEN=$TOKEN pnpm inspect
 ```
+
+The login call belongs to the example API, not the contract. Get a token from your own API however it issues them.
+
+## The notes API contract
+
+The notes client in `src/upstream/notes-client.ts` relies on exactly this. [api-hono-starter](https://github.com/opikdev/api-hono-starter), [api-go-starter](https://github.com/opikdev/api-go-starter), and [api-fastapi-starter](https://github.com/opikdev/api-fastapi-starter) all implement it, as examples.
+
+**Requests.** Paths are relative to `UPSTREAM_API_URL`, which may include a path prefix. Every request sends `Accept: application/json` and `Authorization: Bearer <UPSTREAM_API_TOKEN>`, and is aborted after `UPSTREAM_TIMEOUT_MS`.
+
+| Call | Sends | Expects |
+|---|---|---|
+| `GET /v1/notes?limit=&cursor=` | `limit`: 1 to 50. `cursor`: the previous page's `nextCursor`, omitted for the first page | `2xx` with `{ "data": [Note], "meta": { "nextCursor": string \| null } }`, newest first |
+| `POST /v1/notes` | `Content-Type: application/json` and `{ "title", "body" }`. `title`: 1 to 200 characters. `body`: up to 10,000, may be empty | `2xx` with the created Note |
+
+A Note is `{ "id", "title", "body", "createdAt" }`, all strings, with `createdAt` in ISO 8601. Other fields are ignored. A response that doesn't match is an error.
+
+**Errors.** The client reads `detail` from an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem body when there is one:
+
+| Status | What the model sees |
+|---|---|
+| `401`, `403` | Ask the operator to check `UPSTREAM_API_TOKEN` |
+| `429` | Retry after `Retry-After` seconds, or 60 without it |
+| Other `4xx` | The problem `detail`, or the status |
+| `5xx` | The status, and to try again later |
+| Timeout or no connection | To try again later. `create_note` says the note may exist, and to check with `list_notes` first |
 
 ## Follow the pattern
 
@@ -38,7 +65,7 @@ Keep the API token on the server. The model only sees results and error messages
 - **GraphQL:** send `POST` with `{ query, variables }`. A `200` can still carry an `errors` array, so treat that as a failure too.
 - **A database:** connect with a read-only role, use parameterized queries, set a statement timeout, and cap the rows each tool returns.
 
-Test with a fake upstream, as `test/fake-notes-api.ts` does, and add an end-to-end test against the real system, as `test/e2e/upstream.test.ts` does.
+Test with a fake upstream, as `test/fake-notes-api.ts` does, and add an end-to-end test against a real API, as `test/e2e/upstream.test.ts` does with the example API.
 
 ## Act as the user
 

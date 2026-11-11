@@ -7,7 +7,7 @@ A production-ready MCP server in TypeScript, built on the official MCP SDK v2. I
 | [docs/architecture.md](docs/architecture.md) | How requests flow, and where tools live |
 | [docs/auth.md](docs/auth.md) | HTTP auth modes and settings |
 | [docs/clients.md](docs/clients.md) | How to connect Claude Code, Claude Desktop, Cursor, and VS Code |
-| [docs/upstream.md](docs/upstream.md) | How tools call a backend API |
+| [docs/upstream.md](docs/upstream.md) | The notes API contract, and how tools call a backend API |
 | [docs/publishing.md](docs/publishing.md) | Releasing to npm, the MCP Registry, and GHCR |
 | [docs/decisions/](docs/decisions/) | Why it's built this way |
 | `.agents/skills/` | Step-by-step guides for recurring tasks |

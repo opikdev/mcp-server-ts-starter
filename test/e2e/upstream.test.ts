@@ -41,7 +41,7 @@ afterAll(async () => {
   compose('down', '--volumes', '--remove-orphans');
 });
 
-describe('notes tools against a real api-hono-starter', () => {
+describe('notes tools against the example notes API', () => {
   it('lists the seeded notes', async () => {
     const result = await client.callTool({ name: 'list_notes', arguments: {} });
     const titles = (result.structuredContent as { notes: { title: string }[] }).notes.map(
