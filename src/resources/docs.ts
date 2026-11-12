@@ -24,7 +24,7 @@ export const docs: Doc[] = [
   {
     slug: 'adding-tools',
     title: 'Adding tools',
-    body: 'Create a file in src/tools that registers the tool with an input schema, an output schema, and annotations, then add it to src/server.ts and write tests in test/integration.',
+    body: 'Create a file in src/tools that defines the tool with defineTool: its scope, input and output schemas, and annotations. Add it to the list in src/tools/index.ts, then write tests in test/integration and add a call in stdio.test.ts.',
   },
 ];
 
