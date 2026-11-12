@@ -21,7 +21,6 @@ export function createTokenVerifier(tokens: string[], scopes: string[]): OAuthTo
         clientId: `token-${index + 1}`,
         scopes,
         expiresAt,
-        extra: { allScopes: true },
       };
     },
   };

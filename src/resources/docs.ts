@@ -1,4 +1,8 @@
-import { type McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
+import {
+  type McpServer,
+  ResourceNotFoundError,
+  ResourceTemplate,
+} from '@modelcontextprotocol/server';
 
 export interface Doc {
   slug: string;
@@ -46,7 +50,12 @@ export function registerDocs(server: McpServer) {
     },
     (uri, { slug }) => {
       const doc = docs.find((candidate) => candidate.slug === slug);
-      if (!doc) throw new Error(`No doc at ${uri.href}. List resources to see the available docs.`);
+      if (!doc) {
+        throw new ResourceNotFoundError(
+          uri.href,
+          `No doc at ${uri.href}. List resources to see the available docs.`,
+        );
+      }
       return {
         contents: [
           { uri: uri.href, mimeType: 'text/markdown', text: `# ${doc.title}\n\n${doc.body}\n` },

@@ -1,8 +1,6 @@
-import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import type { Logger } from '../logger.ts';
 import { type Doc, docs, docUri } from '../resources/docs.ts';
-import { catchToolErrors } from '../tool-errors.ts';
+import { defineTool } from './tool.ts';
 
 const snippetLength = 120;
 
@@ -15,30 +13,29 @@ function score(doc: Doc, terms: string[]): number {
   );
 }
 
-export function registerSearchDocsTool(server: McpServer, logger: Logger) {
-  server.registerTool(
-    'search_docs',
-    {
-      title: 'Search the docs',
-      description:
-        'Searches this server’s documentation and returns the best matches, with links to read each one.',
-      inputSchema: z.object({
-        query: z.string().trim().min(1).max(200).describe('Words to search for.'),
-        limit: z.number().int().min(1).max(10).default(3).describe('Maximum number of results.'),
-      }),
-      outputSchema: z.object({
-        results: z.array(
-          z.object({ slug: z.string(), title: z.string(), uri: z.string(), snippet: z.string() }),
-        ),
-      }),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    catchToolErrors(logger, async ({ query, limit }) => {
+export const searchDocsTool = defineTool({
+  name: 'search_docs',
+  title: 'Search the docs',
+  description:
+    'Searches this server’s documentation and returns the best matches, with links to read each one.',
+  inputSchema: z.object({
+    query: z.string().trim().min(1).max(200).describe('Words to search for.'),
+    limit: z.number().int().min(1).max(10).default(3).describe('Maximum number of results.'),
+  }),
+  outputSchema: z.object({
+    results: z.array(
+      z.object({ slug: z.string(), title: z.string(), uri: z.string(), snippet: z.string() }),
+    ),
+  }),
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  handler:
+    () =>
+    async ({ query, limit }) => {
       const terms = query.toLowerCase().split(/\s+/);
       const results = docs
         .map((doc) => ({ doc, score: score(doc, terms) }))
@@ -69,6 +66,5 @@ export function registerSearchDocsTool(server: McpServer, logger: Logger) {
         ],
         structuredContent: { results },
       };
-    }),
-  );
-}
+    },
+});

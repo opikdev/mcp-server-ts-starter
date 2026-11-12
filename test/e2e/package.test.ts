@@ -59,7 +59,7 @@ describe('the published package', () => {
       encoding: 'utf8',
     });
     expect(result.status).toBe(0);
-    expect(result.stderr.trim()).toBe(pkg.version);
-    expect(result.stdout).toBe('');
+    expect(result.stdout.trim()).toBe(pkg.version);
+    expect(result.stderr).toBe('');
   });
 });

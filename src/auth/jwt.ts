@@ -1,4 +1,4 @@
-import type { AuthInfo, OAuthTokenVerifier } from '@modelcontextprotocol/server';
+import type { AuthInfo, OAuthMetadata, OAuthTokenVerifier } from '@modelcontextprotocol/server';
 import { OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { createRemoteJWKSet, errors, type JWTPayload, type JWTVerifyGetKey, jwtVerify } from 'jose';
 
@@ -63,22 +63,30 @@ function metadataUrls(issuer: string): string[] {
   ];
 }
 
-export async function discoverJwksUrl(
+/** Fetches the issuer's authorization server metadata (RFC 8414, or OpenID discovery). */
+export async function discoverAuthorizationServer(
   issuer: string,
   fetcher: typeof fetch = fetch,
-): Promise<string> {
+): Promise<OAuthMetadata> {
   for (const address of metadataUrls(issuer)) {
     const response = await fetcher(address, { signal: AbortSignal.timeout(discoveryTimeoutMs) });
     if (!response.ok) continue;
-    const metadata = (await response.json()) as { issuer?: string; jwks_uri?: string };
+    const metadata = (await response.json()) as OAuthMetadata;
     if (metadata.issuer !== issuer) {
       throw new Error(
         `Authorization server metadata at ${address} names issuer ${metadata.issuer}, not ${issuer}`,
       );
     }
-    if (metadata.jwks_uri) return metadata.jwks_uri;
+    return metadata;
   }
-  throw new Error(`Couldn't find a jwks_uri for ${issuer}. Set MCP_AUTH_JWKS_URL.`);
+  throw new Error(`Couldn't find authorization server metadata for ${issuer}.`);
+}
+
+export function jwksUrlOf(metadata: OAuthMetadata, override: string | undefined): string {
+  const jwksUrl = override ?? metadata.jwks_uri;
+  if (typeof jwksUrl !== 'string')
+    throw new Error(`${metadata.issuer} publishes no jwks_uri. Set MCP_AUTH_JWKS_URL.`);
+  return jwksUrl;
 }
 
 export function remoteKeys(jwksUrl: string): JWTVerifyGetKey {

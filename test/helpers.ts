@@ -9,6 +9,7 @@ import { createNotesClient } from '../src/upstream/notes-client.ts';
 import { createFakeNotesApi, upstreamToken } from './fake-notes-api.ts';
 
 export const devToken = 'dev-token-0123456789abcdef';
+export const everyScope = ['mcp', 'notes:read', 'notes:write'];
 export const fixedNow = () => new Date('2026-11-08T09:30:00.000Z');
 
 const cleanups: (() => Promise<void>)[] = [];
@@ -46,28 +47,31 @@ export function fakeNotes() {
   const api = createFakeNotesApi();
   const client = createNotesClient({
     baseUrl: 'http://notes.test',
-    token: upstreamToken,
+    credential: async () => upstreamToken,
     timeoutMs: 1000,
     fetch: async (input, init) => api.app.request(new Request(input, init)),
   });
-  return { api, client };
+  return { api, client, notes: () => client };
 }
 
 interface ConnectOptions {
   token?: string;
   era?: 'legacy' | 'auto';
+  responses?: Response[];
 }
 
 export async function connect(
   http: HttpApp,
   url: URL,
-  { token, era = 'auto' }: ConnectOptions = {},
+  { token, era = 'auto', responses }: ConnectOptions = {},
 ) {
   const transport = new StreamableHTTPClientTransport(url, {
     fetch: async (input, init) => {
       const request = new Request(input, init);
       request.headers.set('Host', new URL(request.url).host);
-      return http.app.request(request);
+      const response = await http.app.request(request);
+      responses?.push(response.clone());
+      return response;
     },
     ...(token ? { authProvider: { token: async () => token } } : {}),
   });
