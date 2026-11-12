@@ -18,7 +18,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/cli.ts --http",
     "build": "tsc -p tsconfig.build.json",
-    "inspect": "pnpm dlx @modelcontextprotocol/inspector node src/cli.ts",
+    "inspect": "node --env-file-if-exists=.env scripts/inspect.ts",
     "lint": "biome check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
