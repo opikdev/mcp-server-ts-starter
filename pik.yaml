@@ -30,11 +30,12 @@ replace:
   - from: "@opikdev"
     to: "@{{owner}}"
     files: [.github/CODEOWNERS]
+  - from: '"mcp-server-ts-starter"'
+    to: '"{{name}}"'
+    files: [package.json, server.json]
   - from: mcp-server-ts-starter
     to: "{{name}}"
     files:
-      - package.json
-      - server.json
       - compose.yaml
       - test/e2e/package.test.ts
       - test/e2e/docker.test.ts
