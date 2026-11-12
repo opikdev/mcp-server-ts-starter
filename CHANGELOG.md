@@ -11,6 +11,7 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 ### Changed
 
 - `docs/upstream.md` documents the notes API contract the notes tools rely on: endpoints, fields, auth, errors, and timeouts. Any API that meets it works. `compose.upstream.yaml` is labeled as an optional example backend and now runs `api-hono-starter:0.4.0`.
+- `compose.upstream.yaml` runs the hardened `api-hono-starter:0.5.0` on a read-only filesystem. The notes client already relied only on `Retry-After` and the problem `detail`, so its rate-limit headers and error changes need nothing else.
 
 ## [0.3.0] - 2026-11-09
 
