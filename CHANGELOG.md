@@ -4,6 +4,8 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-12
+
 ### Security
 
 - **Breaking:** `list_notes` now requires the `notes:read` scope in OAuth mode. A tool call without its scope gets `403` with a `WWW-Authenticate: Bearer error="insufficient_scope"` challenge from the SDK's `scopeChallenge`, instead of a tool error, so clients can step up.
