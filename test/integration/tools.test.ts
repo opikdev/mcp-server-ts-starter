@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 import { createHttpApp } from '../../src/http/app.ts';
-import { config, connect, devToken, fakeNotes, fixedNow, silentLogger, track } from '../helpers.ts';
+import { tools } from '../../src/tools/index.ts';
+import {
+  config,
+  connect,
+  devToken,
+  everyScope,
+  fakeNotes,
+  fixedNow,
+  silentLogger,
+  track,
+} from '../helpers.ts';
 
 function app() {
   const cfg = config();
@@ -9,9 +19,9 @@ function app() {
     createHttpApp({
       config: cfg,
       logger: silentLogger(),
-      verifier: createTokenVerifier([devToken], ['mcp']),
+      verifier: createTokenVerifier([devToken], everyScope),
       now: fixedNow,
-      notes: fakeNotes().client,
+      notes: fakeNotes().notes,
     }),
   );
   return { http, url: cfg.publicUrl };
@@ -43,15 +53,12 @@ describe.each(['auto', 'legacy'] as const)('tools, for a %s client', (era) => {
     }
   });
 
-  it('lists the sample tools in a stable order, with only create_note writing', async () => {
-    const { tools } = await (await client()).listTools();
-    expect(tools.map((tool) => [tool.name, tool.annotations?.readOnlyHint])).toEqual([
-      ['get_time', true],
-      ['search_docs', true],
-      ['whoami', true],
-      ['list_notes', true],
-      ['create_note', false],
-    ]);
+  it('lists every registered tool in a stable order, with only create_note writing', async () => {
+    const listed = (await (await client()).listTools()).tools;
+    expect(listed.map((tool) => tool.name)).toEqual(tools.map((tool) => tool.name));
+    expect(
+      listed.filter((tool) => tool.annotations?.readOnlyHint === false).map((tool) => tool.name),
+    ).toEqual(['create_note']);
   });
 
   it('returns the time in a time zone', async () => {
@@ -124,12 +131,12 @@ describe.each(['auto', 'legacy'] as const)('tools, for a %s client', (era) => {
     expect(result.isError).toBe(true);
   });
 
-  it('reports the authenticated client', async () => {
+  it('reports the authenticated client, with every scope for a static token', async () => {
     const result = await (await client()).callTool({ name: 'whoami', arguments: {} });
     expect(result.structuredContent).toEqual({
       transport: 'http',
       clientId: 'token-1',
-      scopes: ['mcp'],
+      scopes: ['mcp', 'notes:read', 'notes:write'],
     });
   });
 
@@ -148,9 +155,11 @@ describe.each(['auto', 'legacy'] as const)('tools, for a %s client', (era) => {
     });
   });
 
-  it('fails clearly for an unknown doc', async () => {
-    await expect((await client()).readResource({ uri: 'docs://missing' })).rejects.toThrow(
-      /No doc at docs:\/\/missing/,
-    );
+  it('answers an unknown doc with Invalid Params and the URI', async () => {
+    await expect((await client()).readResource({ uri: 'docs://missing' })).rejects.toMatchObject({
+      code: -32602,
+      data: { uri: 'docs://missing' },
+      message: expect.stringContaining('No doc at docs://missing'),
+    });
   });
 });

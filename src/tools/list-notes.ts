@@ -1,29 +1,30 @@
-import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import type { Logger } from '../logger.ts';
-import { catchToolErrors } from '../tool-errors.ts';
-import { type NotesClient, noteSchema } from '../upstream/notes-client.ts';
+import { noteSchema } from '../upstream/notes-client.ts';
+import { defineTool } from './tool.ts';
 
-export function registerListNotesTool(server: McpServer, logger: Logger, notes: NotesClient) {
-  server.registerTool(
-    'list_notes',
-    {
-      title: 'List notes',
-      description:
-        'Lists notes from the notes API, newest first. Pass nextCursor from a result to get the next page.',
-      inputSchema: z.object({
-        limit: z.number().int().min(1).max(50).default(10).describe('Notes per page.'),
-        cursor: z.string().max(100).optional().describe('nextCursor from a previous result.'),
-      }),
-      outputSchema: z.object({ notes: z.array(noteSchema), nextCursor: z.string().nullable() }),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-    },
-    catchToolErrors(logger, async ({ limit, cursor }) => {
+export const notesReadScope = 'notes:read';
+
+export const listNotesTool = defineTool({
+  name: 'list_notes',
+  scope: notesReadScope,
+  upstream: true,
+  title: 'List notes',
+  description:
+    'Lists notes from the notes API, newest first. Pass nextCursor from a result to get the next page.',
+  inputSchema: z.object({
+    limit: z.number().int().min(1).max(50).default(10).describe('Notes per page.'),
+    cursor: z.string().max(100).optional().describe('nextCursor from a previous result.'),
+  }),
+  outputSchema: z.object({ notes: z.array(noteSchema), nextCursor: z.string().nullable() }),
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
+  handler:
+    ({ notes }) =>
+    async ({ limit, cursor }) => {
       const page = await notes.list({ limit, cursor });
       const lines = page.data.map((note) => `- ${note.title} (${note.id})`);
       const text =
@@ -32,6 +33,5 @@ export function registerListNotesTool(server: McpServer, logger: Logger, notes: 
         content: [{ type: 'text', text }],
         structuredContent: { notes: page.data, nextCursor: page.meta.nextCursor },
       };
-    }),
-  );
-}
+    },
+});

@@ -1,4 +1,8 @@
-import { type McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
+import {
+  type McpServer,
+  ResourceNotFoundError,
+  ResourceTemplate,
+} from '@modelcontextprotocol/server';
 
 export interface Doc {
   slug: string;
@@ -20,7 +24,7 @@ export const docs: Doc[] = [
   {
     slug: 'adding-tools',
     title: 'Adding tools',
-    body: 'Create a file in src/tools that registers the tool with an input schema, an output schema, and annotations, then add it to src/server.ts and write tests in test/integration.',
+    body: 'Create a file in src/tools that defines the tool with defineTool: its scope, input and output schemas, and annotations. Add it to the list in src/tools/index.ts, then write tests in test/integration and add a call in stdio.test.ts.',
   },
 ];
 
@@ -46,7 +50,12 @@ export function registerDocs(server: McpServer) {
     },
     (uri, { slug }) => {
       const doc = docs.find((candidate) => candidate.slug === slug);
-      if (!doc) throw new Error(`No doc at ${uri.href}. List resources to see the available docs.`);
+      if (!doc) {
+        throw new ResourceNotFoundError(
+          uri.href,
+          `No doc at ${uri.href}. List resources to see the available docs.`,
+        );
+      }
       return {
         contents: [
           { uri: uri.href, mimeType: 'text/markdown', text: `# ${doc.title}\n\n${doc.body}\n` },

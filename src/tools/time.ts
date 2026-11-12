@@ -1,7 +1,5 @@
-import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import type { Logger } from '../logger.ts';
-import { catchToolErrors, toolError } from '../tool-errors.ts';
+import { defineTool, toolError } from './tool.ts';
 
 function isTimeZone(timeZone: string): boolean {
   try {
@@ -12,24 +10,23 @@ function isTimeZone(timeZone: string): boolean {
   }
 }
 
-export function registerTimeTool(server: McpServer, logger: Logger, now: () => Date) {
-  server.registerTool(
-    'get_time',
-    {
-      title: 'Get the current time',
-      description: 'Returns the current date and time in an IANA time zone, such as Europe/Berlin.',
-      inputSchema: z.object({
-        timezone: z.string().default('UTC').describe('IANA time zone name. Defaults to UTC.'),
-      }),
-      outputSchema: z.object({ iso: z.string(), timezone: z.string(), local: z.string() }),
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
-      },
-    },
-    catchToolErrors(logger, async ({ timezone }) => {
+export const timeTool = defineTool({
+  name: 'get_time',
+  title: 'Get the current time',
+  description: 'Returns the current date and time in an IANA time zone, such as Europe/Berlin.',
+  inputSchema: z.object({
+    timezone: z.string().default('UTC').describe('IANA time zone name. Defaults to UTC.'),
+  }),
+  outputSchema: z.object({ iso: z.string(), timezone: z.string(), local: z.string() }),
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  handler:
+    ({ now }) =>
+    async ({ timezone }) => {
       if (!isTimeZone(timezone)) {
         return toolError(
           `Unknown time zone "${timezone}". Use an IANA name, such as Europe/Berlin.`,
@@ -46,6 +43,5 @@ export function registerTimeTool(server: McpServer, logger: Logger, now: () => D
         content: [{ type: 'text', text: `${local} (${timezone})` }],
         structuredContent: result,
       };
-    }),
-  );
-}
+    },
+});

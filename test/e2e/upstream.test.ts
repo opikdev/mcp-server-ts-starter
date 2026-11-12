@@ -5,8 +5,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const port = process.env.E2E_API_PORT ?? '3210';
 const apiUrl = `http://localhost:${port}`;
-const env = { ...process.env, API_PORT: port, COMPOSE_PROJECT_NAME: 'notes-upstream-e2e' };
+const env = {
+  ...process.env,
+  API_PORT: port,
+  COMPOSE_PROJECT_NAME: 'mcp-server-ts-starter-upstream-e2e',
+};
 let client: Client;
+let token: string;
 
 function compose(...args: string[]) {
   return execFileSync('docker', ['compose', '-f', 'compose.upstream.yaml', ...args], {
@@ -24,7 +29,7 @@ beforeAll(async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: 'demo@example.com', password: 'demo-password-123' }),
   });
-  const { token } = (await login.json()) as { token: string };
+  ({ token } = (await login.json()) as { token: string });
 
   client = new Client({ name: 'upstream-e2e', version: '1.0.0' });
   await client.connect(
@@ -58,5 +63,26 @@ describe('notes tools against the example notes API', () => {
     expect(created.isError).toBeFalsy();
     const listed = await client.callTool({ name: 'list_notes', arguments: { limit: 1 } });
     expect(listed.structuredContent).toMatchObject({ notes: [{ title: 'Made by MCP' }] });
+  });
+});
+
+describe('the documented Inspector quick start', () => {
+  function inspect(...args: string[]) {
+    const output = execFileSync('pnpm', ['inspect', '--cli', '--format', 'json', ...args], {
+      env: { ...process.env, UPSTREAM_API_URL: apiUrl, UPSTREAM_API_TOKEN: token },
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return JSON.parse(output.slice(output.indexOf('{'))).result;
+  }
+
+  it('passes the upstream settings to the server, so the notes tools appear and work', () => {
+    const { tools } = inspect('--method', 'tools/list');
+    expect(tools.map((tool: { name: string }) => tool.name)).toEqual(
+      expect.arrayContaining(['list_notes', 'create_note']),
+    );
+    const listed = inspect('--method', 'tools/call', '--tool-name', 'list_notes');
+    expect(listed.isError).toBeFalsy();
+    expect(JSON.stringify(listed.structuredContent)).toContain('Welcome');
   });
 });

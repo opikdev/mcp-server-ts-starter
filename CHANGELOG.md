@@ -4,14 +4,44 @@ All notable changes to this repo are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Security
+
+- **Breaking:** `list_notes` now requires the `notes:read` scope in OAuth mode. A tool call without its scope gets `403` with a `WWW-Authenticate: Bearer error="insufficient_scope"` challenge from the SDK's `scopeChallenge`, instead of a tool error, so clients can step up.
+- A `401` for a missing token carries `scope="mcp"` and `resource_metadata`, and no `error` code. A rejected token gets `error="invalid_token"`.
+- **Breaking:** HTTP requests with an `Origin` outside `MCP_ALLOWED_ORIGINS`, which defaults to the `MCP_PUBLIC_URL` origin, get `403`.
+- **Breaking:** in OAuth mode, `MCP_AUTH_ISSUER` and `MCP_PUBLIC_URL` must use `https://`, except on localhost and loopback addresses.
+- Upstream error text reaches the model capped at 500 characters, without control characters, and labeled as untrusted data.
+- Base images are pinned by digest, and Renovate keeps the pins with a 3-day minimum release age. The runtime image drops npm.
+- The release scans the image with Trivy before pushing it, and pushes it with an SBOM, `mode=max` provenance, and a build provenance attestation. CI scans the image too, and the SBOM job only reads the repo.
+
 ### Added
 
 - The README explains how to start a project with `pik new` or GitHub's **Use this template**. `pik new` removes that section from the project it creates.
+- `UPSTREAM_AUTH=exchange`: the notes tools call the API as each user, by exchanging the caller's token at `TOKEN_EXCHANGE_URL` (RFC 8693), with cached tokens and audit logs. `static`, the service account, stays the default. See [ADR 004](docs/decisions/004-use-token-exchange-for-upstream-identity.md).
+- `compose.auth.yaml`: a local Keycloak with a demo realm, for OAuth and token exchange, and an end-to-end test against it.
+- OpenTelemetry traces and metrics over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set: HTTP and tool call spans, request and tool call durations by tool and error, `traceparent` on upstream calls, and `trace_id` and `span_id` in logs.
+- `SHUTDOWN_DRAIN_SECONDS` and `SHUTDOWN_TIMEOUT_SECONDS`, and `/readyz`, which fails while starting or draining.
+- `server.json` lists the GHCR image as an `oci` package, and describes every setting, with secrets marked. The image carries the `io.modelcontextprotocol.server.name` label.
+- `docs/deploy.md`: proxy and TLS, rate limiting, token audience per provider, secrets, shutdown, telemetry, and remotes. ADRs for token exchange, the scope challenge, and rate limiting at the proxy.
 
 ### Changed
 
+- **Breaking:** tools are defined with `defineTool` in `src/tools/tool.ts` and listed in `src/tools/index.ts`. Scopes, `scopes_supported`, and enabled tools come from that list. `requireScope`, `src/auth/scopes.ts`, `catchToolErrors`, and `src/tool-errors.ts` are gone.
+- `whoami` reports the scopes the caller really has. Over stdio, with static tokens, and with `none`, that's every scope.
+- `pnpm inspect` pins the Inspector to 2.14.0 and passes the `UPSTREAM_*` settings to the server, so the documented notes quick start shows the notes tools.
+- A `404` from the notes API becomes a "not found" tool error. `docs/upstream.md` shows how to encode an ID in a path.
+- `--version` and `--help` print to stdout.
+- Dependencies are at their latest releases.
+
 - `docs/upstream.md` documents the notes API contract the notes tools rely on: endpoints, fields, auth, errors, and timeouts. Any API that meets it works. `compose.upstream.yaml` is labeled as an optional example backend and now runs `api-hono-starter:0.4.0`.
 - `compose.upstream.yaml` runs the hardened `api-hono-starter:0.5.0` on a read-only filesystem. The notes client already relied only on `Retry-After` and the problem `detail`, so its rate-limit headers and error changes need nothing else.
+
+### Fixed
+
+- `SIGTERM` no longer aborts requests in flight. The server fails `/readyz`, drains, stops accepting, and lets requests finish before it closes the MCP handler. Before, a `create_note` in flight got an empty `499` while the note was still created.
+- An unknown `docs://` URI returns JSON-RPC `-32602` with `data.uri`, as the 2026-07-28 spec requires.
+- The protected resource metadata answers CORS preflights, so browser clients can read it.
+- OAuth tokens with a space-separated `scp` claim, as Microsoft Entra ID issues, keep their scopes.
 
 ## [0.3.0] - 2026-11-09
 

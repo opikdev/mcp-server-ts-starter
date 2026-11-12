@@ -1,7 +1,7 @@
 import { OAuthError } from '@modelcontextprotocol/server';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { createJwtVerifier, discoverJwksUrl } from '../../src/auth/jwt.ts';
+import { createJwtVerifier, discoverAuthorizationServer, jwksUrlOf } from '../../src/auth/jwt.ts';
 import { createTokenVerifier } from '../../src/auth/token.ts';
 
 const issuer = 'https://auth.example.com';
@@ -44,10 +44,13 @@ describe('JWT verifier', () => {
     expect(auth.expiresAt).toBeGreaterThan(Date.now() / 1000);
   });
 
-  it('reads scopes from an scp array', async () => {
-    const auth = await verifier.verifyAccessToken(await sign({ scope: undefined, scp: ['mcp'] }));
-    expect(auth.scopes).toEqual(['mcp']);
-  });
+  it.each([[['mcp', 'notes:read']], ['mcp notes:read']])(
+    'reads scopes from an scp claim of %j',
+    async (scp) => {
+      const auth = await verifier.verifyAccessToken(await sign({ scope: undefined, scp }));
+      expect(auth.scopes).toEqual(['mcp', 'notes:read']);
+    },
+  );
 
   it('falls back to azp, then sub, for the client', async () => {
     expect(
@@ -94,21 +97,22 @@ describe('JWT algorithm allowlist', () => {
   });
 });
 
-describe('JWKS discovery', () => {
+describe('authorization server discovery', () => {
   const respond = (routes: Record<string, unknown>) =>
     (async (input: string | URL | Request) => {
       const body = routes[String(input)];
       return body === undefined ? new Response('not found', { status: 404 }) : Response.json(body);
     }) as typeof fetch;
 
-  it('reads jwks_uri from OAuth metadata', async () => {
+  it('reads OAuth metadata, and its jwks_uri', async () => {
     const fetcher = respond({
       'https://auth.example.com/.well-known/oauth-authorization-server': {
         issuer,
         jwks_uri: 'https://auth.example.com/keys',
       },
     });
-    expect(await discoverJwksUrl(issuer, fetcher)).toBe('https://auth.example.com/keys');
+    const metadata = await discoverAuthorizationServer(issuer, fetcher);
+    expect(jwksUrlOf(metadata, undefined)).toBe('https://auth.example.com/keys');
   });
 
   it('falls back to OpenID metadata, keeping the issuer path', async () => {
@@ -119,7 +123,14 @@ describe('JWKS discovery', () => {
         jwks_uri: 'https://auth.example.com/certs',
       },
     });
-    expect(await discoverJwksUrl(tenant, fetcher)).toBe('https://auth.example.com/certs');
+    const metadata = await discoverAuthorizationServer(tenant, fetcher);
+    expect(jwksUrlOf(metadata, undefined)).toBe('https://auth.example.com/certs');
+  });
+
+  it('prefers MCP_AUTH_JWKS_URL over the published jwks_uri', () => {
+    expect(jwksUrlOf({ issuer, jwks_uri: 'https://a/keys' } as never, 'https://b/keys')).toBe(
+      'https://b/keys',
+    );
   });
 
   it('rejects metadata for another issuer', async () => {
@@ -129,11 +140,17 @@ describe('JWKS discovery', () => {
         jwks_uri: 'x',
       },
     });
-    await expect(discoverJwksUrl(issuer, fetcher)).rejects.toThrow('names issuer');
+    await expect(discoverAuthorizationServer(issuer, fetcher)).rejects.toThrow('names issuer');
   });
 
-  it('explains how to fix missing metadata', async () => {
-    await expect(discoverJwksUrl(issuer, respond({}))).rejects.toThrow('MCP_AUTH_JWKS_URL');
+  it('fails when the issuer publishes no metadata', async () => {
+    await expect(discoverAuthorizationServer(issuer, respond({}))).rejects.toThrow(
+      `Couldn't find authorization server metadata for ${issuer}`,
+    );
+  });
+
+  it('explains how to fix missing signing keys', () => {
+    expect(() => jwksUrlOf({ issuer } as never, undefined)).toThrow('MCP_AUTH_JWKS_URL');
   });
 });
 
@@ -143,11 +160,10 @@ describe('token verifier', () => {
     ['mcp'],
   );
 
-  it('accepts each configured token, with every scope', async () => {
+  it('accepts each configured token, with the scopes it is given', async () => {
     expect(await tokens.verifyAccessToken('second-token-0123456789')).toMatchObject({
       clientId: 'token-2',
       scopes: ['mcp'],
-      extra: { allScopes: true },
     });
   });
 
