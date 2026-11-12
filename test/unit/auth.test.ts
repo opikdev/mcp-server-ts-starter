@@ -44,10 +44,13 @@ describe('JWT verifier', () => {
     expect(auth.expiresAt).toBeGreaterThan(Date.now() / 1000);
   });
 
-  it('reads scopes from an scp array', async () => {
-    const auth = await verifier.verifyAccessToken(await sign({ scope: undefined, scp: ['mcp'] }));
-    expect(auth.scopes).toEqual(['mcp']);
-  });
+  it.each([[['mcp', 'notes:read']], ['mcp notes:read']])(
+    'reads scopes from an scp claim of %j',
+    async (scp) => {
+      const auth = await verifier.verifyAccessToken(await sign({ scope: undefined, scp }));
+      expect(auth.scopes).toEqual(['mcp', 'notes:read']);
+    },
+  );
 
   it('falls back to azp, then sub, for the client', async () => {
     expect(

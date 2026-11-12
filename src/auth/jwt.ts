@@ -13,6 +13,7 @@ interface JwtVerifierOptions {
 
 function scopesOf(payload: JWTPayload): string[] {
   if (typeof payload.scope === 'string') return payload.scope.split(' ').filter(Boolean);
+  if (typeof payload.scp === 'string') return payload.scp.split(' ').filter(Boolean);
   if (Array.isArray(payload.scp)) return payload.scp.filter((scope) => typeof scope === 'string');
   return [];
 }
