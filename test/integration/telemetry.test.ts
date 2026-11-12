@@ -1,3 +1,10 @@
+import {
+  AggregationTemporality,
+  type DataPoint,
+  type Histogram,
+  InMemoryMetricExporter,
+  PeriodicExportingMetricReader,
+} from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTokenVerifier } from '../../src/auth/token.ts';
@@ -28,22 +35,34 @@ const exporter = {
   async shutdown() {},
 };
 
+const metricExporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE);
 let sdk: NodeSDK;
 
 beforeAll(() => {
-  process.env.OTEL_METRICS_EXPORTER = 'none';
   process.env.OTEL_LOGS_EXPORTER = 'none';
-  sdk = new NodeSDK({ serviceName: 'telemetry-test', traceExporter: exporter as never });
+  sdk = new NodeSDK({
+    serviceName: 'telemetry-test',
+    traceExporter: exporter as never,
+    metricReaders: [new PeriodicExportingMetricReader({ exporter: metricExporter })],
+  });
   sdk.start();
 });
 
 afterAll(async () => {
-  delete process.env.OTEL_METRICS_EXPORTER;
   delete process.env.OTEL_LOGS_EXPORTER;
 });
 
+function histogram(name: string): DataPoint<Histogram>[] {
+  return metricExporter
+    .getMetrics()
+    .flatMap((resource) => resource.scopeMetrics)
+    .flatMap((scope) => scope.metrics)
+    .filter((metric) => metric.descriptor.name === name)
+    .flatMap((metric) => metric.dataPoints as DataPoint<Histogram>[]);
+}
+
 describe('with an OTLP endpoint set', () => {
-  it('traces HTTP requests and tool calls, and propagates the trace upstream and into logs', async () => {
+  it('traces and measures HTTP requests and tool calls, and propagates the trace upstream and into logs', async () => {
     const { logger, logs } = capturingLogger();
     const notes = fakeNotes();
     const cfg = config({ OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318' });
@@ -76,6 +95,25 @@ describe('with an OTLP endpoint set', () => {
 
     const traceparent = notes.api.requests[0]?.headers.get('traceparent');
     expect(traceparent).toMatch(new RegExp(`^00-${traceId}-[0-9a-f]{16}-01$`));
+
+    const toolCalls = histogram('mcp.server.operation.duration');
+    expect(toolCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          attributes: { 'mcp.method.name': 'tools/call', 'gen_ai.tool.name': 'list_notes' },
+          value: expect.objectContaining({ count: 1 }),
+        }),
+        expect.objectContaining({
+          attributes: {
+            'mcp.method.name': 'tools/call',
+            'gen_ai.tool.name': 'get_time',
+            'error.type': 'tool_error',
+          },
+          value: expect.objectContaining({ count: 1 }),
+        }),
+      ]),
+    );
+    expect(histogram('http.server.request.duration').length).toBeGreaterThan(0);
 
     const access = logs()
       .trim()
