@@ -26,7 +26,7 @@ replace:
     files: [README.md]
   - from: opikdev/mcp-server-ts-starter
     to: "{{owner}}/{{name}}"
-    files: [README.md, server.json, package.json]
+    files: [README.md, server.json, package.json, Dockerfile]
   - from: "@opikdev"
     to: "@{{owner}}"
     files: [.github/CODEOWNERS]
